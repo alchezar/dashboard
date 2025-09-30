@@ -1,12 +1,15 @@
-﻿pub mod config;
-pub mod database;
-pub mod error;
-pub mod services;
-pub mod routes;
-pub mod models {
-    pub mod user;
+﻿pub mod model {
+    pub mod controller;
+    pub mod types;
 }
+pub mod web {
+    pub mod routes_login;
+    pub mod routes_server;
+}
+pub mod config;
+pub mod error;
 
 pub mod prelude {
-    pub use crate::error::DashboardError;
+    pub use crate::error::{Error, Result};
+    pub use crate::model::controller::Controller;
 }
