@@ -15,7 +15,6 @@ path = "./src/bin/migrate.rs"
 rust-argon2 = "3.0"
 async-trait = "0.1"
 axum = "0.8"
-chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5", features = ["derive"] }
 dotenv = "0.15"
 envy = "0.4"
@@ -39,4 +38,15 @@ features = [
 	"migrate",
 	"postgres",
 	"runtime-tokio-rustls",
+	"time",
+]
+
+[dependencies.time]
+version = "0.3"
+features = [
+	"serde",
+	"serde-human-readable",
+	"macros",
+	"formatting",
+	"parsing"
 ]

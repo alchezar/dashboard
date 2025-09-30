@@ -3,7 +3,6 @@ use axum::{Router, middleware};
 use dashboard::prelude::{Controller, Result};
 use dashboard::web::{routes_login, routes_server};
 use std::net::SocketAddr;
-use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 
 #[tokio::main]

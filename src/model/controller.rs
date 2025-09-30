@@ -3,7 +3,6 @@ use crate::model::types::User;
 use crate::prelude::Result;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
-use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct Controller {
@@ -26,18 +25,27 @@ impl Controller {
         Ok(Self { pool })
     }
 
-    pub(crate) async fn get_user_by_id(&self, user_id: Uuid) -> Result<User> {
-        // sqlx::query_as!(User, r#"SELECT * FROM users WHERE id = $1"#, user_id)
-        //     .fetch_one(&self.pool)
-        //     .await?
-        Ok(User::default())
+    pub(crate) async fn get_user_by_id(&self, user_id: i32) -> Result<User> {
+        Ok(sqlx::query_as!(
+            User,
+            r#"
+			SELECT * FROM users WHERE id = $1
+			"#,
+            user_id
+        )
+        .fetch_one(&self.pool)
+        .await?)
     }
 
     pub(crate) async fn get_user_by_email(&self, email: &str) -> Result<User> {
-        // sqlx::query_as!(User, r#"SELECT * FROM users WHERE email = $1"#)
-        //     .bind(email)
-        //     .fetch_one(&self.pool)
-        //     .await?
-        Ok(User::default())
+        Ok(sqlx::query_as!(
+            User,
+            r#"
+			SELECT * FROM users WHERE email = $1
+			"#,
+            email
+        )
+        .fetch_one(&self.pool)
+        .await?)
     }
 }

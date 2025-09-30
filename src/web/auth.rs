@@ -1,26 +1,23 @@
 use crate::config::CONFIG;
 use crate::error::{AuthError, Error, Result};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
+use time::{Duration, OffsetDateTime};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
     pub exp: usize,
     pub iat: usize,
-    pub user_id: uuid::Uuid,
+    pub user_id: i32,
 }
 
-pub fn create_token(user_id: uuid::Uuid) -> Result<String> {
-    let now = chrono::Utc::now();
-    let expires_in = chrono::Duration::seconds(CONFIG.token_duration_sec as i64);
-    let exp = (now + expires_in).timestamp() as usize;
-    let iat = now.timestamp() as usize;
+pub fn create_token(user_id: i32) -> Result<String> {
+    let now = OffsetDateTime::now_utc();
+    let expires_in = Duration::seconds(CONFIG.token_duration_sec as i64);
+    let exp = (now + expires_in).unix_timestamp() as usize;
+    let iat = now.unix_timestamp() as usize;
 
-    let claims = Claims {
-        exp,
-        iat,
-        user_id,
-    };
+    let claims = Claims { exp, iat, user_id };
 
     let header = Header::default();
     let token = encode(

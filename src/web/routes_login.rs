@@ -30,12 +30,11 @@ async fn register(
         .await?;
     let token = create_token(user.id)?;
 
-    let body = Json(json!({
+    Ok(Json(json!({
         "result": {
             "token": token,
         }
-    }));
-    Ok(body)
+    })))
 }
 
 async fn login(
@@ -51,20 +50,16 @@ async fn login(
 
     let token = create_token(user.id)?;
 
-    let body = Json(json!({
+    Ok(Json(json!({
         "result": {
             "token": token,
         }
-    }));
-    Ok(body)
+    })))
 }
 
 pub fn verify_password(encoded: &str, password: &str) -> Result<()> {
-    let valid = argon2::verify_encoded(encoded, password.as_bytes())?;
-
-    if valid {
-        Ok(())
-    } else {
-        Err(Error::Auth(AuthError::WrongPassword))
+    match argon2::verify_encoded(encoded, password.as_bytes())? {
+        true => Ok(()),
+        false => Err(Error::Auth(AuthError::WrongPassword)),
     }
 }
