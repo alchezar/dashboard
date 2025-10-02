@@ -1,5 +1,5 @@
 ﻿pub mod model {
-    pub mod controller;
+    pub mod queries;
     pub mod types;
 }
 pub mod web {
@@ -13,5 +13,6 @@ pub mod error;
 
 pub mod prelude {
     pub use crate::error::{Error, Result};
-    pub use crate::model::controller::Controller;
 }
+
+todo!("Replace SERIAL with UUID in users");

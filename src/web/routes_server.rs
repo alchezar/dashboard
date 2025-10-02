@@ -1,15 +1,18 @@
 //! Protected routes
+#![allow(unused)]
 
-use crate::prelude::{Controller, Result};
+use crate::model::queries;
+use crate::prelude::Result;
 use crate::web::auth::Claims;
 use crate::web::mw_auth;
 use axum::extract::State;
 use axum::routing::{get, post};
-use axum::{Extension, Json}; // Add Extension
+use axum::{Extension, Json};
 use axum::{Router, middleware};
 use serde_json::{Value, json};
+use sqlx::PgPool;
 
-pub fn routes() -> Router<Controller> {
+pub fn routes() -> Router<PgPool> {
     Router::new()
         .route("/user/me", get(get_user))
         .route("/servers", get(get_servers).post(new_server))
@@ -19,11 +22,11 @@ pub fn routes() -> Router<Controller> {
 }
 
 async fn get_user(
-    State(controller): State<Controller>,
+    State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<Value>> {
     let user_id = claims.user_id;
-    let user = controller.get_user_by_id(user_id).await?;
+    let user = queries::get_user_by_id(&pool, user_id).await?;
 
     let body = Json(json!({
         "result": {
@@ -34,10 +37,8 @@ async fn get_user(
     Ok(body)
 }
 
-async fn get_servers(State(controller): State<Controller>, Extension(claims): Extension<Claims>) {}
-async fn new_server(State(controller): State<Controller>, Extension(claims): Extension<Claims>) {}
-async fn get_server(State(controller): State<Controller>, Extension(claims): Extension<Claims>) {}
-async fn delete_server(State(controller): State<Controller>, Extension(claims): Extension<Claims>) {
-}
-async fn server_action(State(controller): State<Controller>, Extension(claims): Extension<Claims>) {
-}
+async fn get_servers(State(pool): State<PgPool>, Extension(claims): Extension<Claims>) {}
+async fn new_server(State(pool): State<PgPool>, Extension(claims): Extension<Claims>) {}
+async fn get_server(State(pool): State<PgPool>, Extension(claims): Extension<Claims>) {}
+async fn delete_server(State(pool): State<PgPool>, Extension(claims): Extension<Claims>) {}
+async fn server_action(State(pool): State<PgPool>, Extension(claims): Extension<Claims>) {}

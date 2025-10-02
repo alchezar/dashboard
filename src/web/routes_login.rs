@@ -1,34 +1,33 @@
 //! Public routes
 
 use crate::error::{AuthError, Error};
-use crate::prelude::{Controller, Result};
+use crate::model::queries;
+use crate::model::types::{LoginPayload, NewUser};
+use crate::prelude::Result;
+use crate::web::auth;
 use crate::web::auth::create_token;
 use axum::extract::State;
 use axum::routing::post;
 use axum::{Json, Router};
-use serde::Deserialize;
 use serde_json::{Value, json};
+use sqlx::PgPool;
 
-pub fn routes() -> Router<Controller> {
+pub fn routes() -> Router<PgPool> {
     Router::new()
         .route("/register", post(register))
         .route("/login", post(login))
 }
 
-#[derive(Debug, Deserialize)]
-struct UserAuthPayload {
-    email: String,
-    password: String,
-}
-
+#[tracing::instrument(level = "trace",
+	skip(pool, new_user),
+	fields(email = %new_user.email))]
 async fn register(
-    State(controller): State<Controller>,
-    Json(payload): Json<UserAuthPayload>,
+    State(pool): State<PgPool>,
+    Json(new_user): Json<NewUser>,
 ) -> Result<Json<Value>> {
-    let user = controller
-        .add_new_user(payload.email, payload.password)
-        .await?;
+    let user = queries::add_new_user(&pool, new_user).await?;
     let token = create_token(user.id)?;
+    tracing::info!("-- Token: {:?}", token);
 
     Ok(Json(json!({
         "result": {
@@ -37,17 +36,16 @@ async fn register(
     })))
 }
 
+#[tracing::instrument(level = "trace", skip(pool))]
 async fn login(
-    State(controller): State<Controller>,
-    Json(payload): Json<UserAuthPayload>,
+    State(pool): State<PgPool>,
+    Json(payload): Json<LoginPayload>,
 ) -> Result<Json<Value>> {
-    let user = controller.get_user_by_email(&payload.email).await?;
-    let valid = argon2::verify_encoded(&user.password, payload.password.as_bytes())?;
+    let user = queries::get_user_by_email(&pool, &payload.email)
+        .await
+        .map_err(|_| Error::Auth(AuthError::WrongEmail))?;
 
-    if !valid {
-        return Err(Error::Auth(AuthError::WrongEmail));
-    }
-
+    auth::verify_password(&user.password, &payload.password)?;
     let token = create_token(user.id)?;
 
     Ok(Json(json!({
@@ -55,11 +53,4 @@ async fn login(
             "token": token,
         }
     })))
-}
-
-pub fn verify_password(encoded: &str, password: &str) -> Result<()> {
-    match argon2::verify_encoded(encoded, password.as_bytes())? {
-        true => Ok(()),
-        false => Err(Error::Auth(AuthError::WrongPassword)),
-    }
 }
