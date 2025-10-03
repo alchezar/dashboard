@@ -1,12 +1,13 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use uuid::Uuid;
 
 /// Represents a user row in the database, including the password hash.
 ///
 #[derive(Debug, Clone, FromRow)]
 pub struct DbUser {
-    pub id: i32,
+    pub id: Uuid,
     pub first_name: String,
     pub last_name: String,
     pub email: String,
@@ -25,7 +26,7 @@ pub struct DbUser {
 ///
 #[derive(Debug, Clone, Serialize)]
 pub struct ApiUser {
-    pub id: i32,
+    pub id: Uuid,
     pub first_name: String,
     pub last_name: String,
     pub email: String,
@@ -39,7 +40,7 @@ pub struct ApiUser {
 
 /// Payload for creating a new user, contains the plaintext password
 ///
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct NewUser {
     pub first_name: String,
     pub last_name: String,

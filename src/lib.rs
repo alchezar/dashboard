@@ -7,12 +7,11 @@ pub mod web {
     pub mod mw_auth;
     pub mod routes_login;
     pub mod routes_server;
+    pub mod types;
 }
 pub mod config;
 pub mod error;
 
 pub mod prelude {
-    pub use crate::error::{Error, Result};
+    pub use crate::error::{AuthError, Error, Result};
 }
-
-todo!("Replace SERIAL with UUID in users");

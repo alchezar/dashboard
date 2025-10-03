@@ -4,7 +4,6 @@ fn main() {
     println!("Migration Utility!");
 
     // Original: $2y$10$di2wHvDjMahfs2dUagJu/.udZ0v00WcJFxxUdK2gAZ6Qq0hrEbD9O
-
     let password = "Harry!Password";
     let hash = bcrypt::hash(password, WHMCS_COST).unwrap();
     println!("hash: {}", hash);

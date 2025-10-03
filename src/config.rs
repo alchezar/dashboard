@@ -19,7 +19,7 @@ pub struct Config {
 impl Config {
     pub fn from_env() -> Result<Self> {
         dotenv::dotenv()?;
-        tracing::info!("-- .env loaded.");
+        tracing::info!(target: "-- config", ".env loaded.");
 
         let config = Self {
             database_url: env::var("DATABASE_URL")?,
@@ -27,7 +27,7 @@ impl Config {
             token_secret: env::var("TOKEN_SECRET")?,
             token_duration_sec: env::var("TOKEN_DURATION_SEC")?.parse::<u64>()?,
         };
-        tracing::info!("-- Configuration loaded.");
+        tracing::info!(target: "-- config", "Loaded.");
 
         Ok(config)
 
@@ -36,7 +36,7 @@ impl Config {
         //     .build()?;
         //
         // let config = builder.try_deserialize()?;
-        // tracing::info!("-- Config loaded: {:?}", config);
+        // tracing::info!(target: "-- config", "Loaded: {:?}", config);
         //
         // Ok(config)
     }

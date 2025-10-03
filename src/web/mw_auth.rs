@@ -1,5 +1,5 @@
 use crate::error::{AuthError, Error, Result};
-use crate::web::auth::{validate_token};
+use crate::web::auth::token::validate;
 use axum::body::Body;
 use axum::http::Request;
 use axum::middleware::Next;
@@ -16,7 +16,7 @@ pub async fn mw_require_auth(
         .and_then(|s| s.strip_prefix("Bearer "))
         .ok_or(Error::Auth(AuthError::TokenNotFound))?;
 
-    let claims = validate_token(token)?;
+    let claims = validate(token)?;
     request.extensions_mut().insert(claims);
 
     Ok(next.run(request).await)

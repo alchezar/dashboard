@@ -1,9 +1,10 @@
 use crate::config::CONFIG;
 use crate::model::types::{ApiUser, DbUser, NewUser};
 use crate::prelude::Result;
-use crate::web::auth::hash_password;
+use crate::web::auth::password::hash;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
+use uuid::Uuid;
 
 #[tracing::instrument(level = "trace")]
 pub async fn connect_to_db() -> Result<PgPool> {
@@ -40,14 +41,14 @@ RETURNING *
         new_user.post_code,
         new_user.country,
         new_user.phone_number,
-        hash_password(&new_user.plain_password)?
+        hash(&new_user.plain_password)?
     )
     .fetch_one(pool)
     .await?
     .into())
 }
 
-pub(crate) async fn get_user_by_id(pool: &PgPool, user_id: i32) -> Result<ApiUser> {
+pub(crate) async fn get_user_by_id(pool: &PgPool, user_id: Uuid) -> Result<ApiUser> {
     Ok(sqlx::query_as!(
         DbUser,
         r#"
@@ -70,4 +71,56 @@ SELECT * FROM users WHERE email = $1
     )
     .fetch_one(pool)
     .await?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_user() -> NewUser {
+        NewUser {
+            first_name: "John".to_owned(),
+            last_name: "Doe".to_owned(),
+            email: "john.doe@example.com".to_owned(),
+            address: "123 Main St".to_owned(),
+            city: "Anytown".to_owned(),
+            state: "Any-state".to_owned(),
+            post_code: "12345".to_owned(),
+            country: "USA".to_owned(),
+            phone_number: "555-1234".to_owned(),
+            plain_password: "secure_password_123".to_owned(),
+        }
+    }
+
+    #[sqlx::test]
+    async fn add_new_user_should_works(pool: PgPool) {
+        // Arrange
+        let test_user = test_user();
+        // Act
+        let new_user = add_new_user(&pool, test_user.clone()).await.unwrap();
+        // Assert
+        assert_eq!(new_user.email, test_user.email);
+    }
+
+    #[sqlx::test]
+    async fn get_user_by_id_should_works(pool: PgPool) {
+        // Arrange
+        let test_user = test_user();
+        let new_user = add_new_user(&pool, test_user.clone()).await.unwrap();
+        // Act
+        let found_user = get_user_by_id(&pool, new_user.id).await.unwrap();
+        // Assert
+        assert_eq!(found_user.id, new_user.id);
+    }
+
+    #[sqlx::test]
+    async fn get_user_by_email_should_works(pool: PgPool) {
+        // Arrange
+        let test_user = test_user();
+        let new_user = add_new_user(&pool, test_user.clone()).await.unwrap();
+        // Act
+        let found_user = get_user_by_email(&pool, &new_user.email).await.unwrap();
+        // Assert
+        assert_eq!(found_user.email, new_user.email);
+    }
 }
