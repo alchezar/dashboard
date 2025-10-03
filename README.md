@@ -1,0 +1,2 @@
+# dashboard
+Proxmox Management Platform
