@@ -1,17 +1,11 @@
-﻿pub mod model {
-    pub mod queries;
-    pub mod types;
-}
-pub mod web {
-    pub mod auth;
-    pub mod mw_auth;
-    pub mod routes_login;
-    pub mod routes_server;
-    pub mod types;
-}
-pub mod config;
+﻿pub mod config;
 pub mod error;
+pub mod model;
+pub mod proxmox;
+pub mod state;
+pub mod web;
 
 pub mod prelude {
     pub use crate::error::{AuthError, Error, Result};
+    pub use crate::state::AppState;
 }

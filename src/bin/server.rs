@@ -1,8 +1,11 @@
 use axum::response::Response;
 use axum::{Router, middleware};
-use dashboard::prelude::Result;
+use dashboard::config::CONFIG;
+use dashboard::prelude::{AppState, Result};
+use dashboard::proxmox::client::ProxmoxClient;
 use dashboard::web::{routes_login, routes_server};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::Level;
@@ -14,11 +17,17 @@ async fn main() -> Result<()> {
     init_logger()?;
     tracing::info!(target: ">> server", "Logger ready.");
 
-    let pool = dashboard::model::queries::connect_to_db().await?;
+    let app_state = AppState {
+        pool: dashboard::model::queries::connect_to_db().await?,
+        proxmox: Arc::new(ProxmoxClient::new(
+            CONFIG.proxmox_url.clone(),
+            CONFIG.proxmox_auth_header.clone(),
+        )),
+    };
     let router = Router::new()
         .merge(routes_login::routes())
         .merge(routes_server::routes())
-        .with_state(pool)
+        .with_state(app_state)
         .layer(middleware::map_response(main_response_mapper))
         .layer(CorsLayer::new().allow_origin(Any));
 

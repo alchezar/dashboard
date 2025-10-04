@@ -14,6 +14,8 @@ pub struct Config {
     pub password_secret: String,
     pub token_secret: String,
     pub token_duration_sec: u64,
+	pub proxmox_url: String,
+    pub proxmox_auth_header: String,
 }
 
 impl Config {
@@ -26,6 +28,8 @@ impl Config {
             password_secret: env::var("PASSWORD_SECRET")?,
             token_secret: env::var("TOKEN_SECRET")?,
             token_duration_sec: env::var("TOKEN_DURATION_SEC")?.parse::<u64>()?,
+			proxmox_url: env::var("PROXMOX_URL")?,
+            proxmox_auth_header: env::var("PROXMOX_AUTH_HEADER")?,
         };
         tracing::info!(target: ">> config", "Loaded: {:?}.", config);
 

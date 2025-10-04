@@ -11,11 +11,13 @@ pub enum Error {
     Any(String),
     #[error("Authentication error: {0}")]
     Auth(AuthError),
+    #[error("Proxmox API error")]
+    Proxmox,
 
     #[error("Environment error: {0}")]
     Environment(#[from] dotenv::Error),
-	#[error("Environment variable error: {0}")]
-	EnvironmentVariable(#[from] std::env::VarError),
+    #[error("Environment variable error: {0}")]
+    EnvironmentVariable(#[from] std::env::VarError),
     #[error("Config error: {0}")]
     Config(#[from] config::ConfigError),
     #[error("Database error: {0}")]
