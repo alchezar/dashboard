@@ -12,7 +12,7 @@ use tracing_subscriber::fmt::format::FmtSpan;
 async fn main() -> Result<()> {
     println!("Server!");
     init_logger()?;
-    tracing::info!(target: "-- server", "Logger ready.");
+    tracing::info!(target: ">> server", "Logger ready.");
 
     let pool = dashboard::model::queries::connect_to_db().await?;
     let router = Router::new()
@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
         .layer(CorsLayer::new().allow_origin(Any));
 
     let address = SocketAddr::from(([127, 0, 0, 1], 8080));
-    tracing::info!(target: "-- server", "Listening on {}\n", address);
+    tracing::info!(target: ">> server", "Listening on {}\n", address);
     let listener = TcpListener::bind(&address).await?;
     axum::serve(listener, router).await?;
     Ok(())

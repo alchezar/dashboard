@@ -1,6 +1,8 @@
-﻿use serde::{Deserialize, Serialize};
+﻿use crate::model::types::ApiUser;
+use serde::{Deserialize, Serialize};
 
 pub type TokenResponse = Response<TokenPayload>;
+pub type UserResponse = Response<ApiUser>;
 
 /// Generic API response.
 #[derive(Debug, Serialize, Deserialize)]

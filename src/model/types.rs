@@ -24,7 +24,7 @@ pub struct DbUser {
 
 /// Represents a user that is safe to expose to the public API.
 ///
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiUser {
     pub id: Uuid,
     pub first_name: String,

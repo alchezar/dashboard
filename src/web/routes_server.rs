@@ -5,6 +5,7 @@ use crate::model::queries;
 use crate::prelude::Result;
 use crate::web::auth::Claims;
 use crate::web::mw_auth;
+use crate::web::types::{Response, UserResponse};
 use axum::extract::State;
 use axum::routing::{get, post};
 use axum::{Extension, Json};
@@ -24,17 +25,9 @@ pub fn routes() -> Router<PgPool> {
 async fn get_user(
     State(pool): State<PgPool>,
     Extension(claims): Extension<Claims>,
-) -> Result<Json<Value>> {
-    let user_id = claims.user_id;
-    let user = queries::get_user_by_id(&pool, user_id).await?;
-
-    let body = Json(json!({
-        "result": {
-            "user_id": user_id,
-        }
-    }));
-
-    Ok(body)
+) -> Result<Json<UserResponse>> {
+    let user = queries::get_user_by_id(&pool, claims.user_id).await?;
+    Ok(Json(Response::new(user)))
 }
 
 async fn get_servers(State(pool): State<PgPool>, Extension(claims): Extension<Claims>) {}
