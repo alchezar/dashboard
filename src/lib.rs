@@ -4,6 +4,7 @@ pub mod model;
 pub mod proxmox;
 pub mod state;
 pub mod web;
+pub mod app;
 
 pub mod prelude {
     pub use crate::error::{AuthError, Error, Result};

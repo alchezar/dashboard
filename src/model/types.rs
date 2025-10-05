@@ -72,6 +72,8 @@ impl From<DbUser> for ApiUser {
     }
 }
 
+/// Payload for authentication an existing user.
+///
 #[derive(Debug, Deserialize)]
 pub struct LoginPayload {
     pub email: String,

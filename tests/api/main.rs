@@ -1,46 +1,52 @@
 ﻿mod auth_api;
 mod user_api;
 
+// -----------------------------------------------------------------------------
+
 mod helpers {
-    use axum::Router;
     use dashboard::prelude::AppState;
-    use dashboard::web::{routes_login, routes_server};
     use reqwest::Client;
     use serde_json::Value;
     use sqlx::PgPool;
     use std::sync::Arc;
-    use tokio::net::TcpListener;
 
+    /// Test helper that runs a server instance in the background and provides a
+    /// `reqwest::Client` for making API calls.
+    ///
     pub struct TestApp {
         pub url: String,
-        #[allow(unused)]
-        pub state: AppState,
         pub client: Client,
     }
 
-    pub async fn spawn_app(pool: PgPool) -> TestApp {
-        let state = AppState {
-            pool,
-            proxmox: Arc::new(MockProxmoxClient::default()),
-        };
-        let router = Router::new()
-            .merge(routes_login::routes())
-            .merge(routes_server::routes())
-            .with_state(state.clone());
+    impl TestApp {
+        /// Creates a new `TestApp`.
+        ///
+        /// # Arguments
+        ///
+        /// * `pool`: Test pool provided by the `#[sqlx::test]` macro.
+        ///
+        pub async fn new(pool: PgPool) -> Self {
+            // Create testable application instance.
+            let proxmox = Arc::new(MockProxmoxClient::default());
+            let state = AppState { pool, proxmox };
+            let application = App::build(state, "127.0.0.1:0".parse().unwrap())
+                .await
+                .unwrap();
+            let url = application.get_url().unwrap();
 
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let address = listener.local_addr().unwrap();
+            // Spawn application without blocking the execution.
+            tokio::spawn(async move {
+                application.run().await.unwrap();
+            });
 
-        tokio::spawn(async move {
-            axum::serve(listener, router).await.unwrap();
-        });
-
-        TestApp {
-            url: format!("http://{}", address),
-            state,
-            client: Client::new(),
+            TestApp {
+                url,
+                client: Client::new(),
+            }
         }
     }
+
+    // -------------------------------------------------------------------------
 
     pub fn register_user_payload() -> Value {
         serde_json::json!({
@@ -67,6 +73,7 @@ mod helpers {
     // -------------------------------------------------------------------------
 
     use async_trait::async_trait;
+    use dashboard::app::App;
     use dashboard::prelude::Result;
     use dashboard::proxmox::Proxmox;
     use dashboard::proxmox::types::{ProcessId, TaskStatus, VmOptions, VmRef, VmStatus};
