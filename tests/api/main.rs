@@ -4,6 +4,7 @@ mod user_api;
 // -----------------------------------------------------------------------------
 
 mod helpers {
+    use dashboard::app::App;
     use dashboard::prelude::AppState;
     use reqwest::Client;
     use serde_json::Value;
@@ -73,10 +74,11 @@ mod helpers {
     // -------------------------------------------------------------------------
 
     use async_trait::async_trait;
-    use dashboard::app::App;
     use dashboard::prelude::Result;
     use dashboard::proxmox::Proxmox;
-    use dashboard::proxmox::types::{ProcessId, TaskStatus, VmOptions, VmRef, VmStatus};
+    use dashboard::proxmox::types::{
+        Status, TaskRef, TaskStatus, UniqueProcessId, VmOptions, VmRef,
+    };
 
     /// Mock Proxmox client for testing.
     ///
@@ -85,26 +87,29 @@ mod helpers {
 
     #[async_trait]
     impl Proxmox for MockProxmoxClient {
-        async fn create(&self, _options: VmOptions) -> Result<ProcessId> {
-            Ok("mock_process_id".to_string())
+        async fn start(&self, _vm: VmRef) -> Result<UniqueProcessId> {
+            Ok("mock_process_id".into())
         }
-        async fn start(&self, _vm: VmRef) -> Result<ProcessId> {
-            Ok("mock_process_id".to_string())
+        async fn shutdown(&self, _vm: VmRef) -> Result<UniqueProcessId> {
+            Ok("mock_process_id".into())
         }
-        async fn stop(&self, _vm: VmRef) -> Result<ProcessId> {
-            Ok("mock_process_id".to_string())
+        async fn stop(&self, _vm: VmRef) -> Result<UniqueProcessId> {
+            Ok("mock_process_id".into())
         }
-        async fn reboot(&self, _vm: VmRef) -> Result<ProcessId> {
-            Ok("mock_process_id".to_string())
+        async fn reboot(&self, _vm: VmRef) -> Result<UniqueProcessId> {
+            Ok("mock_process_id".into())
         }
-        async fn delete(&self, _vm: VmRef) -> Result<ProcessId> {
-            Ok("mock_process_id".to_string())
+        async fn create(&self, _options: VmOptions) -> Result<UniqueProcessId> {
+            Ok("mock_process_id".into())
         }
-        async fn task_status(&self, _vm: VmRef) -> Result<TaskStatus> {
+        async fn delete(&self, _vm: VmRef) -> Result<UniqueProcessId> {
+            Ok("mock_process_id".into())
+        }
+        async fn vm_status(&self, _vm: VmRef) -> Result<Status> {
+            Ok(Status::Running)
+        }
+        async fn task_status(&self, _task: TaskRef) -> Result<TaskStatus> {
             Ok(TaskStatus::Completed)
-        }
-        async fn vm_status(&self, _vm: VmRef) -> Result<VmStatus> {
-            Ok(VmStatus::Running)
         }
     }
 }

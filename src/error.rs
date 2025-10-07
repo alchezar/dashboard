@@ -11,8 +11,8 @@ pub enum Error {
     Any(String),
     #[error("Authentication error: {0}")]
     Auth(AuthError),
-    #[error("Proxmox API error")]
-    Proxmox,
+    #[error("Proxmox API error: {0} failed: status {1}, body: {2}")]
+    Proxmox(ProxmoxError, reqwest::StatusCode, String),
 
     #[error("Environment error: {0}")]
     Environment(#[from] dotenv::Error),
@@ -30,6 +30,8 @@ pub enum Error {
     Telemetry(#[from] tracing::dispatcher::SetGlobalDefaultError),
     #[error("Parse error: {0}")]
     Parse(#[from] ParseIntError),
+    #[error("Reqwest error: {0}")]
+    Reqwest(#[from] reqwest::Error),
 }
 
 impl IntoResponse for Error {
@@ -53,4 +55,15 @@ pub enum AuthError {
     TokenNotFound,
     WrongEmail,
     WrongPassword,
+}
+
+#[derive(Debug, Display)]
+pub enum ProxmoxError {
+    Start,
+    Shutdown,
+    Stop,
+    Reboot,
+    Create,
+    Delete,
+    Status,
 }

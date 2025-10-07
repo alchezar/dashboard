@@ -1,6 +1,6 @@
 use dashboard::app::App;
 use dashboard::config::CONFIG;
-use dashboard::prelude::{AppState, Result};
+use dashboard::prelude::{AppState, Error, Result};
 use dashboard::proxmox::client::ProxmoxClient;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -11,8 +11,8 @@ use tracing_subscriber::fmt::format::FmtSpan;
 ///
 #[tokio::main]
 async fn main() -> Result<()> {
-    println!("Server!");
-    init_logger()?;
+    tracing::info!(target: ">> server", "Start!");
+    init_logger(Level::TRACE)?;
     tracing::info!(target: ">> server", "Logger ready.");
 
     let app_state = AppState {
@@ -31,16 +31,19 @@ async fn main() -> Result<()> {
 
 /// Initializes the global `tracing` subscriber for logging.
 ///
-fn init_logger() -> Result<()> {
+/// # Arguments
+///
+/// * `level`: Maximum verbosity level.
+///
+fn init_logger(level: Level) -> Result<()> {
     let subscriber = tracing_subscriber::fmt()
         .compact()
         .with_file(true)
         .with_line_number(true)
         .with_thread_ids(true)
         .with_target(true)
-        .with_max_level(Level::TRACE)
+        .with_max_level(level)
         .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
         .finish();
-    tracing::subscriber::set_global_default(subscriber)?;
-    Ok(())
+    tracing::subscriber::set_global_default(subscriber).map_err(Error::from)
 }

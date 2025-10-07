@@ -51,7 +51,7 @@ pub fn routes() -> Router<AppState> {
 /// curl --location 'http://127.0.0.1:8080/user/me' --header 'Authorization: Bearer <TOKEN>'
 /// ```
 ///
-#[tracing::instrument(level = "trace", target = "-- routes",
+#[tracing::instrument(level = "trace", target = "-- handler",
 	skip(app_state, claims),
 	fields(id = %claims.user_id))]
 async fn get_user(
@@ -59,6 +59,7 @@ async fn get_user(
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<UserResponse>> {
     let user = queries::get_user_by_id(&app_state.pool, claims.user_id).await?;
+    tracing::info!(target: ">> handler", "Found user: {:?}", user);
 
     Ok(Json(Response::new(user)))
 }

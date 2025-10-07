@@ -42,8 +42,8 @@ impl App {
 
     /// Runs the application server.
     ///
-    /// This method consumes the `App` instance and starts the server, which will
-    /// run until it is shut down or an error occurs.
+    /// This method consumes the `App` instance and starts the server, which
+    /// will run until it is shut down or an error occurs.
     ///
     pub async fn run(self) -> Result<()> {
         self.server.await.map_err(Into::into)
