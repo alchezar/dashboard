@@ -7,6 +7,13 @@ use crate::prelude::Result;
 use crate::proxmox::types::*;
 use async_trait::async_trait;
 
+/// An abstract interface for interacting with the Proxmox VE API.
+///
+/// Defines a contract for a client that can perform various operations on a
+/// Proxmox cluster, such as managing the lifecycle of virtual machines (start,
+/// stop, create, delete), and querying the status of VMs and asynchronous
+/// tasks.
+///
 #[async_trait]
 pub trait Proxmox {
     /// Start virtual machine.
@@ -14,6 +21,11 @@ pub trait Proxmox {
     /// # Arguments
     ///
     /// * `vm`: target virtual machine on the Proxmox cluster.
+    ///
+    /// # Returns
+    ///
+    /// * `UniqueProcessId` (UPID) of the start task.
+    ///   This task can be monitored using the `task_status` method.
     ///
     /// # Proxmox API
     ///
@@ -70,19 +82,21 @@ pub trait Proxmox {
     ///
     async fn reboot(&self, vm: VmRef) -> Result<UniqueProcessId>;
 
-    /// Create a copy of virtual machine/template.
+    /// Get the next free VMID and create a clone of a virtual machine or
+    /// template.
     ///
     /// # Arguments
     ///
-    /// * `options`:
+    /// * `vm`: template virtual machine on the Proxmox cluster to clone.
     ///
     /// # Proxmox API
     ///
-    /// This method corresponds to the following Proxmox API endpoint:
+    /// This method corresponds to the following Proxmox API endpoints:
     ///
+    /// [`HTTP: GET /api2/json/cluster/nextid`](https://pve.proxmox.com/pve-docs/api-viewer/index.html#/cluster/nextid)\
     /// [`HTTP: POST /api2/json/nodes/{node}/qemu/{vmid}/clone`](https://pve.proxmox.com/pve-docs/api-viewer/index.html#/nodes/{node}/qemu/{vmid}/clone)
     ///
-    async fn create(&self, options: VmOptions) -> Result<UniqueProcessId>;
+    async fn create(&self, vm: VmRef) -> Result<UniqueProcessId>;
 
     /// Destroy the VM and all used/owned volumes. Removes any VM specific
     /// permissions and firewall rules

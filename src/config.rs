@@ -2,10 +2,14 @@ use crate::prelude::Result;
 use serde::Deserialize;
 use std::sync::LazyLock;
 
+/// Global lazily-initialized application [`Config`].
+///
 pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
     Config::from_env().unwrap_or_else(|error| panic!("== Failed to load config: {:?}!", error))
 });
 
+/// Represents the application's configuration.
+///
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub database_url: String,
@@ -17,6 +21,8 @@ pub struct Config {
 }
 
 impl Config {
+    /// Loads the configuration from environment variables.
+    ///
     pub fn from_env() -> Result<Self> {
         dotenv::dotenv()?;
         tracing::info!(target: ">> config", ".env loaded.");
@@ -25,7 +31,7 @@ impl Config {
             .add_source(config::Environment::default())
             .build()?
             .try_deserialize()?;
-        tracing::info!(target: ">> config", "Loaded: {:?}", config);
+        tracing::info!(target: ">> config", "Configuration loaded from environment variables.");
 
         Ok(config)
     }

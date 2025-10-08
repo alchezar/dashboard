@@ -59,7 +59,7 @@ async fn get_user(
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<UserResponse>> {
     let user = queries::get_user_by_id(&app_state.pool, claims.user_id).await?;
-    tracing::info!(target: ">> handler", "Found user: {:?}", user);
+    tracing::info!(target: ">> handler", "Found user: email={}", user.email);
 
     Ok(Json(Response::new(user)))
 }

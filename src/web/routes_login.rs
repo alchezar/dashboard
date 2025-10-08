@@ -46,7 +46,7 @@ async fn register(
 ) -> Result<Json<TokenResponse>> {
     let user = queries::add_new_user(&app_state.pool, new_user).await?;
     let token = token::create(user.id)?;
-    tracing::info!(target: ">> handler", "Token: {:?}", token);
+    tracing::info!(target: ">> handler", "Token generated successfully for user_id={:?}", user.id);
 
     Ok(Json(TokenResponse::new(token.into())))
 }
@@ -89,7 +89,7 @@ async fn login(
         .map_err(|_| Error::Auth(AuthError::WrongEmail))?;
     password::verify(&user.password, &payload.password)?;
     let token = token::create(user.id)?;
-    tracing::info!(target: ">> handler", "Token: {:?}", token);
+    tracing::info!(target: ">> handler", "Token generated successfully for user_id={:?}", user.id);
 
     Ok(Json(TokenResponse::new(token.into())))
 }

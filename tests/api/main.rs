@@ -77,7 +77,7 @@ mod helpers {
     use dashboard::prelude::Result;
     use dashboard::proxmox::Proxmox;
     use dashboard::proxmox::types::{
-        Status, TaskRef, TaskStatus, UniqueProcessId, VmOptions, VmRef,
+		Status, TaskRef, TaskStatus, UniqueProcessId, VmRef,
     };
 
     /// Mock Proxmox client for testing.
@@ -99,7 +99,7 @@ mod helpers {
         async fn reboot(&self, _vm: VmRef) -> Result<UniqueProcessId> {
             Ok("mock_process_id".into())
         }
-        async fn create(&self, _options: VmOptions) -> Result<UniqueProcessId> {
+        async fn create(&self, _template_vm: VmRef) -> Result<UniqueProcessId> {
             Ok("mock_process_id".into())
         }
         async fn delete(&self, _vm: VmRef) -> Result<UniqueProcessId> {
