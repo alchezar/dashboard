@@ -25,7 +25,7 @@ pub struct Response<T> {
 /// a plain string where a UPID is expected. It also provides helper methods for
 /// formatting the UPID for use in API URLs.
 ///
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(transparent)]
 pub struct UniqueProcessId(String);
 
@@ -37,6 +37,12 @@ impl UniqueProcessId {
     ///
     pub fn encoded(&self) -> String {
         utf8_percent_encode(&self.0, NON_ALPHANUMERIC).to_string()
+    }
+
+    /// Returns the inner string of the UPID.
+    ///
+    pub fn into_inner(self) -> String {
+        self.0
     }
 }
 
@@ -61,7 +67,7 @@ pub struct StatusPayload {
 
 /// Power status of a virtual machine.
 ///
-#[derive(Deserialize)]
+#[derive(Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Status {
     Stopped,
@@ -70,6 +76,7 @@ pub enum Status {
 
 /// High-level status of a long-running asynchronous task in Proxmox.
 ///
+#[derive(Debug, PartialEq)]
 pub enum TaskStatus {
     Pending,
     Completed,
