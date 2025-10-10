@@ -1,5 +1,6 @@
 ﻿use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use crate::web::types::NewServerPayload;
 
 /// Generic wrapper for all successful Proxmox API responses.
 ///
@@ -140,10 +141,41 @@ pub struct TaskRef {
 impl TaskRef {
     /// Creates a new reference to Proxmox task.
     ///
-    pub fn new(node: &str, upid: &str) -> Self {
+    pub fn new(node: &str, upid: &UniqueProcessId) -> Self {
         Self {
             node: node.to_owned(),
-            upid: upid.into(),
+            upid: upid.clone(),
         }
     }
+}
+
+#[derive(Debug, Default, Serialize)]
+pub struct VmConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cpu_cores: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ram_memory: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub os_template: Option<OsTemplate>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub datacenter_location: Option<Location>,
+}
+
+impl From<NewServerPayload> for VmConfig {
+	fn from(payload: NewServerPayload) -> Self {
+		todo!()
+	}
+}
+
+#[derive(Debug, Serialize)]
+pub enum OsTemplate {
+    Debian,
+    Ubuntu,
+}
+
+#[derive(Debug, Serialize)]
+pub enum Location {
+    Frankfurt,
+    Amsterdam,
+    Dallas,
 }

@@ -1,5 +1,6 @@
 ﻿use crate::model::types::ApiUser;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 pub type TokenResponse = Response<TokenPayload>;
 pub type UserResponse = Response<ApiUser>;
@@ -30,4 +31,9 @@ impl From<String> for TokenPayload {
     fn from(token: String) -> Self {
         Self { token }
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct NewServerPayload {
+    pub product_id: Uuid,
 }

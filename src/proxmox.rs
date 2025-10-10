@@ -96,7 +96,7 @@ pub trait Proxmox {
     /// [`HTTP: GET /api2/json/cluster/nextid`](https://pve.proxmox.com/pve-docs/api-viewer/index.html#/cluster/nextid)\
     /// [`HTTP: POST /api2/json/nodes/{node}/qemu/{vmid}/clone`](https://pve.proxmox.com/pve-docs/api-viewer/index.html#/nodes/{node}/qemu/{vmid}/clone)
     ///
-    async fn create(&self, vm: VmRef) -> Result<UniqueProcessId>;
+    async fn create(&self, vm: VmRef) -> Result<(i32, UniqueProcessId)>;
 
     /// Destroy the VM and all used/owned volumes. Removes any VM specific
     /// permissions and firewall rules
@@ -112,6 +112,8 @@ pub trait Proxmox {
     /// [`HTTP: DELETE /api2/json/nodes/{node}/qemu/{vmid}`](https://pve.proxmox.com/pve-docs/api-viewer/index.html#/nodes/{node}/qemu/{vmid})
     ///
     async fn delete(&self, vm: VmRef) -> Result<UniqueProcessId>;
+
+	async fn vm_config(&self, vm: VmRef, config: VmConfig) -> Result<UniqueProcessId>;
 
     /// Get virtual machine status.
     ///
@@ -139,5 +141,5 @@ pub trait Proxmox {
     ///
     /// [`GET /api2/json/nodes/{node}/tasks/{upid}/status`](https://pve.proxmox.com/pve-docs/api-viewer/index.html#/nodes/{node}/tasks/{upid}/status)
     ///
-    async fn task_status(&self, task: TaskRef) -> Result<TaskStatus>;
+    async fn task_status(&self, task: &TaskRef) -> Result<TaskStatus>;
 }

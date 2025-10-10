@@ -3,6 +3,7 @@ pub mod config;
 pub mod error;
 pub mod model;
 pub mod proxmox;
+pub mod services;
 pub mod state;
 pub mod telemetry;
 pub mod web;

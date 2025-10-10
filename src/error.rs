@@ -13,6 +13,8 @@ pub enum Error {
 	NotFound(String),
 	#[error("Not supported: {0}")]
 	NotSupported(String),
+	#[error("Timeout after: {0} milliseconds")]
+	Timeout(f32),
     #[error("Authentication error: {0}")]
     Auth(AuthError),
     #[error("Proxmox API error: {0} failed: status {1}, body: {2}")]

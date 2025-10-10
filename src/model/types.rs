@@ -79,3 +79,60 @@ pub struct LoginPayload {
     pub email: String,
     pub password: String,
 }
+
+// -----------------------------------------------------------------------------
+
+/// Represents a row from the `services` table.
+///
+#[allow(unused)]
+#[derive(Debug, Clone, FromRow)]
+pub struct Service {
+    id: Uuid,
+    status: ServiceStatus,
+    user_id: Uuid,
+    server_id: Uuid,
+    product_id: Uuid,
+}
+
+/// Represents the status from the `services` table.
+///
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename = "lowercase")]
+pub enum ServiceStatus {
+    Pending,
+    Active,
+    Failed,
+}
+
+impl From<&str> for ServiceStatus {
+    fn from(value: &str) -> Self {
+        match value.to_lowercase().as_str() {
+            "pending" => ServiceStatus::Pending,
+            "active" => ServiceStatus::Active,
+            _ => ServiceStatus::Failed,
+        }
+    }
+}
+
+/// Represents a row from the `servers` table.
+///
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Server {
+    id: Uuid,
+    network_id: Uuid,
+    vm_id: Option<i32>,
+    node_name: Option<String>,
+    ip_address: String,
+}
+
+/// Combined struct for the public API response.
+///
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiServer {
+    pub service_id: Uuid,
+    pub server_id: Uuid,
+    pub vm_id: Option<i32>,
+    pub node_name: Option<String>,
+    pub ip_address: String,
+    pub status: ServiceStatus,
+}

@@ -129,11 +129,11 @@ impl Proxmox for ProxmoxClient {
         self.execute_command(&url, ProxmoxError::Reboot).await
     }
 
-    async fn create(&self, template_vm: VmRef) -> Result<UniqueProcessId> {
+    async fn create(&self, template_vm: VmRef) -> Result<(i32, UniqueProcessId)> {
         // Get next free VMID.
         let nextid_url = format!("{}/cluster/nextid", self.url);
         let new_id = self
-            .get_data::<String>(&nextid_url, ProxmoxError::Create)
+            .get_data::<i32>(&nextid_url, ProxmoxError::Create)
             .await?;
 
         // Create a copy of virtual machine/template.
@@ -150,9 +150,10 @@ impl Proxmox for ProxmoxClient {
             .send()
             .await?;
         match response.status() {
-            status if status.is_success() => {
-                Ok(response.json::<Response<UniqueProcessId>>().await?.data)
-            }
+            status if status.is_success() => Ok((
+                new_id,
+                response.json::<Response<UniqueProcessId>>().await?.data,
+            )),
             status => {
                 let text = response.text().await?;
                 Err(Error::Proxmox(ProxmoxError::Create, status, text))
@@ -179,6 +180,26 @@ impl Proxmox for ProxmoxClient {
         }
     }
 
+    async fn vm_config(&self, vm: VmRef, config: VmConfig) -> Result<UniqueProcessId> {
+        let url = format!("{}/nodes/{}/qemu/{}/config", self.url, vm.node, vm.id);
+        let response = self
+            .client
+            .post(&url)
+            .header(AUTHORIZATION, &self.auth_header)
+            .form(&config)
+            .send()
+            .await?;
+        match response.status() {
+            status if status.is_success() => {
+                Ok(response.json::<Response<UniqueProcessId>>().await?.data)
+            }
+            status => {
+                let text = response.text().await?;
+                Err(Error::Proxmox(ProxmoxError::Create, status, text))
+            }
+        }
+    }
+
     async fn vm_status(&self, vm: VmRef) -> Result<Status> {
         let url = format!(
             "{}/nodes/{}/qemu/{}/status/current",
@@ -190,7 +211,7 @@ impl Proxmox for ProxmoxClient {
         Ok(data.status)
     }
 
-    async fn task_status(&self, task: TaskRef) -> Result<TaskStatus> {
+    async fn task_status(&self, task: &TaskRef) -> Result<TaskStatus> {
         let url = format!(
             "{}/nodes/{}/tasks/{}/status",
             self.url,
@@ -402,7 +423,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_vm_success() {
+    async fn clone_vm_success() {
         // Arrange
         let (mock_server, client) = setup().await;
         let expected_vmid = "101";
@@ -425,11 +446,12 @@ mod tests {
 
         // Assert
         assert!(result.is_ok());
-        assert_eq!(result.unwrap().into_inner(), expected_upid);
+        let (_vmid, upid) = result.unwrap();
+        assert_eq!(upid.into_inner(), expected_upid);
     }
 
     #[tokio::test]
-    async fn create_vm_failure_second() {
+    async fn clone_vm_failure_second() {
         // Arrange
         let (mock_server, client) = setup().await;
         let expected_vmid = "101";
@@ -460,7 +482,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_vm_failure_first() {
+    async fn clone_vm_failure_first() {
         // Arrange
         let (mock_server, client) = setup().await;
         Mock::given(method("GET"))
@@ -574,7 +596,7 @@ mod tests {
     async fn task_status_pending() {
         // Arrange
         let (mock_server, client) = setup().await;
-        let upid = "UPID:pve:12345678:90ABCDEF:12345678:type:100:id@realm:";
+        let upid = "UPID:pve:12345678:90ABCDEF:12345678:type:100:id@realm:".into();
         let encoded_upid = UniqueProcessId::from(upid).encoded();
         let response_json = json!({"data": {"status": "running"}});
         Mock::given(method("GET"))
@@ -584,7 +606,7 @@ mod tests {
             .await;
 
         // Act
-        let result = client.task_status(TaskRef::new("pve", upid)).await;
+        let result = client.task_status(&TaskRef::new("pve", upid)).await;
 
         // Assert
         assert!(result.is_ok());
@@ -595,7 +617,7 @@ mod tests {
     async fn task_status_completed() {
         // Arrange
         let (mock_server, client) = setup().await;
-        let upid = "UPID:pve:12345678:90ABCDEF:12345678:type:100:id@realm:";
+        let upid = "UPID:pve:12345678:90ABCDEF:12345678:type:100:id@realm:".into();
         let encoded_upid = UniqueProcessId::from(upid).encoded();
         let response_json = json!({"data": {"status": "stopped", "exitstatus": "OK"}});
         Mock::given(method("GET"))
@@ -605,7 +627,7 @@ mod tests {
             .await;
 
         // Act
-        let result = client.task_status(TaskRef::new("pve", upid)).await;
+        let result = client.task_status(&TaskRef::new("pve", upid)).await;
 
         // Assert
         assert!(result.is_ok());
@@ -616,7 +638,7 @@ mod tests {
     async fn task_status_failed() {
         // Arrange
         let (mock_server, client) = setup().await;
-        let upid = "UPID:pve:12345678:90ABCDEF:12345678:type:100:id@realm:";
+        let upid = "UPID:pve:12345678:90ABCDEF:12345678:type:100:id@realm:".into();
         let encoded_upid = UniqueProcessId::from(upid).encoded();
         let response_json =
             json!({"data": {"status": "stopped", "exitstatus": "ERROR: command failed"}});
@@ -627,7 +649,7 @@ mod tests {
             .await;
 
         // Act
-        let result = client.task_status(TaskRef::new("pve", upid)).await;
+        let result = client.task_status(&TaskRef::new("pve", upid)).await;
 
         // Assert
         assert!(result.is_ok());
@@ -641,7 +663,7 @@ mod tests {
     async fn task_status_failure() {
         // Arrange
         let (mock_server, client) = setup().await;
-        let upid = "UPID:pve:12345678:90ABCDEF:12345678:type:100:id@realm:";
+        let upid = "UPID:pve:12345678:90ABCDEF:12345678:type:100:id@realm:".into();
         let encoded_upid = UniqueProcessId::from(upid).encoded();
         Mock::given(method("GET"))
             .and(path(format!("/nodes/pve/tasks/{}/status", encoded_upid)))
@@ -650,7 +672,7 @@ mod tests {
             .await;
 
         // Act
-        let result = client.task_status(TaskRef::new("pve", upid)).await;
+        let result = client.task_status(&TaskRef::new("pve", upid)).await;
 
         // Assert
         assert!(result.is_err());

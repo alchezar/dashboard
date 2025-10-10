@@ -1,9 +1,11 @@
 use crate::config::CONFIG;
-use crate::model::types::{ApiUser, DbUser, NewUser};
+use crate::model::types::{ApiServer, ApiUser, DbUser, NewUser, ServiceStatus};
 use crate::prelude::Result;
+use crate::proxmox::types::VmRef;
 use crate::web::auth::password::hash;
-use sqlx::PgPool;
+use crate::web::types::NewServerPayload;
 use sqlx::postgres::PgPoolOptions;
+use sqlx::{PgPool, PgTransaction};
 use uuid::Uuid;
 
 #[tracing::instrument(level = "trace", target = "-- database")]
@@ -72,6 +74,80 @@ SELECT * FROM users WHERE email = $1
     .fetch_one(pool)
     .await?)
 }
+
+pub(crate) async fn get_servers_for_user(pool: &PgPool, user_id: Uuid) -> Result<Vec<ApiServer>> {
+    let rows = sqlx::query!(
+        r#"
+SELECT
+	svc.id AS "service_id",
+	srv.id AS "server_id",
+	srv.vm_id,
+	srv.node_name,
+	srv.ip_address,
+	svc.status
+FROM services AS svc
+JOIN servers AS srv ON srv.id = svc.server_id
+WHERE svc.user_id = $1
+		"#,
+        user_id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| ApiServer {
+            service_id: row.service_id,
+            server_id: row.server_id,
+            vm_id: row.vm_id,
+            node_name: row.node_name,
+            ip_address: row.ip_address,
+            status: row.status.as_str().into(),
+        })
+        .collect::<Vec<_>>())
+}
+
+pub(crate) async fn create_initial_server(
+    transaction: &mut PgTransaction<'_>,
+    user_id: Uuid,
+    payload: &NewServerPayload,
+) -> Result<ApiServer> {
+    todo!()
+}
+
+pub(crate) async fn update_initial_server(
+    transaction: &mut PgTransaction<'_>,
+    server_id: Uuid,
+    new_vm: VmRef,
+) -> Result<()> {
+    todo!()
+}
+
+pub(crate) async fn find_template(
+    transaction: &mut PgTransaction<'_>,
+    product_id: Uuid,
+) -> Result<VmRef> {
+    todo!("Update products table to")
+    // CREATE TABLE products
+    // 	(
+    //      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    //      group_id     UUID NOT NULL REFERENCES product_groups (id),
+    //      name         TEXT NOT NULL,
+    //      virtual_type TEXT NOT NULL
+    //      template_id   INTEGER NOT NULL, +
+    //      template_node TEXT NOT NULL, +
+    // 	);
+}
+
+pub(crate) async fn update_service_status(
+    transaction: &mut PgTransaction<'_>,
+    service_id: Uuid,
+    status: ServiceStatus,
+) -> Result<()> {
+    todo!()
+}
+
+// -----------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
