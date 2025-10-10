@@ -463,8 +463,6 @@ mod tests {
     async fn create_vm_failure_first() {
         // Arrange
         let (mock_server, client) = setup().await;
-        let expected_vmid = "101";
-        let response_vmid_json = json!({"data": expected_vmid});
         Mock::given(method("GET"))
             .and(path("/cluster/nextid"))
             .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))

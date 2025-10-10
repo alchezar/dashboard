@@ -61,6 +61,8 @@ impl App {
 /// This serves as a simple visual separator between requests in the development
 /// console logs.
 async fn main_response_mapper(res: Response) -> Response {
+    #[cfg(debug_assertions)]
     println!();
+
     res
 }

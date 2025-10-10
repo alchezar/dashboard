@@ -1,0 +1,9 @@
+﻿application:
+  host: localhost
+  port: 8080
+database:
+  host: localhost
+  port: 5432
+  username: postgres
+  password: postgres
+  database_name: postgres

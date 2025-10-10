@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 #[tracing::instrument(level = "trace", target = "-- database")]
 pub async fn connect_to_db() -> Result<PgPool> {
-    let database_url = &CONFIG.database_url;
+    let database_url = &CONFIG.get_database_url();
     let pool = PgPoolOptions::new().connect(database_url).await?;
 
     Ok(pool)
