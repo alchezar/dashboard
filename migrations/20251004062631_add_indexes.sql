@@ -6,8 +6,8 @@ CREATE INDEX idx_products_group_id ON products (group_id);
 -- custom_fields table
 CREATE INDEX idx_custom_fields_product_id ON custom_fields (product_id);
 
--- servers table
-CREATE INDEX idx_servers_network_id ON servers (network_id);
+-- ip addresses table
+CREATE INDEX idx_ip_addresses_available ON ip_addresses (server_id) WHERE server_id IS NULL;
 
 -- services table
 CREATE INDEX idx_services_user_id ON services (user_id);

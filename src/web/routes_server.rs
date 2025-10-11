@@ -36,9 +36,9 @@ pub fn routes() -> Router<AppState> {
 ///
 /// # Arguments
 ///
-/// * `State(app_state)` - The shared application state, containing the database
+/// * `State(app_state)`: The shared application state, containing the database
 ///   pool.
-/// * `Extension(claims)` - The claims extracted from the JWT, which include the
+/// * `Extension(claims)`: The claims extracted from the JWT, which include the
 ///   user's ID.
 ///
 /// # Returns
@@ -74,9 +74,9 @@ async fn get_user(
 ///
 /// # Arguments
 ///
-/// * `State(app_state)` - The shared application state, containing the database
+/// * `State(app_state)`: The shared application state, containing the database
 ///   pool.
-/// * `Extension(claims)` - The claims extracted from the JWT, which include the
+/// * `Extension(claims)`: The claims extracted from the JWT, which include the
 ///   user's ID.
 ///
 /// # Returns
@@ -102,6 +102,21 @@ async fn list_servers(
     Ok(Json(Response::new(servers)))
 }
 
+/// Accepts a request to create a new server and starts the process in the
+/// background.
+///
+/// # Arguments
+///
+/// * `State(app_state)`: The shared application state, containing the database
+///   pool.
+/// * `Extension(claims)`: The claims extracted from the JWT, which include the
+///   user's ID.
+/// * `Json(payload)`: specifications for the new server.
+///
+/// # Returns
+///
+/// This handler always returns an `HTTP 202 Accepted`
+///
 async fn create_server(
     State(app_state): State<AppState>,
     Extension(claims): Extension<Claims>,

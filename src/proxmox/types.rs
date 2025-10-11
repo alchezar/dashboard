@@ -1,6 +1,7 @@
-﻿use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
-use serde::{Deserialize, Serialize};
+﻿use crate::prelude::{Error, Result};
 use crate::web::types::NewServerPayload;
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
+use serde::{Deserialize, Serialize};
 
 /// Generic wrapper for all successful Proxmox API responses.
 ///
@@ -156,26 +157,19 @@ pub struct VmConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ram_memory: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub os_template: Option<OsTemplate>,
+    pub os_template: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub datacenter_location: Option<Location>,
+    pub datacenter: Option<String>,
 }
 
-impl From<NewServerPayload> for VmConfig {
-	fn from(payload: NewServerPayload) -> Self {
-		todo!()
-	}
-}
-
-#[derive(Debug, Serialize)]
-pub enum OsTemplate {
-    Debian,
-    Ubuntu,
-}
-
-#[derive(Debug, Serialize)]
-pub enum Location {
-    Frankfurt,
-    Amsterdam,
-    Dallas,
+impl TryFrom<NewServerPayload> for VmConfig {
+    type Error = Error;
+    fn try_from(payload: NewServerPayload) -> Result<Self> {
+        Ok(Self {
+            cpu_cores: payload.cpu_cores,
+            ram_memory: payload.ram_gb,
+            os_template: Some(payload.os),
+            datacenter: Some(payload.data_center),
+        })
+    }
 }

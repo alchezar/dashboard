@@ -36,4 +36,9 @@ impl From<String> for TokenPayload {
 #[derive(Debug, Clone, Deserialize)]
 pub struct NewServerPayload {
     pub product_id: Uuid,
+    pub host_name: String,
+    pub cpu_cores: Option<i32>,
+    pub ram_gb: Option<i32>,
+    pub os: String,
+    pub data_center: String,
 }

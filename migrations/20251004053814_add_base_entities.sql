@@ -1,9 +1,10 @@
 -- Create network table
 CREATE TABLE network
 (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    gateway     TEXT NOT NULL,
-    subnet_mask TEXT NOT NULL
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    datacenter_name TEXT NOT NULL,
+    gateway         TEXT NOT NULL,
+    subnet_mask     TEXT NOT NULL
 );
 
 -- Create product groups table

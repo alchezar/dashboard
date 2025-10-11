@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
@@ -96,8 +97,7 @@ pub struct Service {
 
 /// Represents the status from the `services` table.
 ///
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename = "lowercase")]
+#[derive(Debug, Clone, Display, Serialize, Deserialize)]
 pub enum ServiceStatus {
     Pending,
     Active,
@@ -119,10 +119,9 @@ impl From<&str> for ServiceStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Server {
     id: Uuid,
-    network_id: Uuid,
     vm_id: Option<i32>,
     node_name: Option<String>,
-    ip_address: String,
+    host_name: String,
 }
 
 /// Combined struct for the public API response.

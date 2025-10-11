@@ -83,10 +83,11 @@ SELECT
 	srv.id AS "server_id",
 	srv.vm_id,
 	srv.node_name,
-	srv.ip_address,
+	ip.ip_address,
 	svc.status
 FROM services AS svc
 JOIN servers AS srv ON srv.id = svc.server_id
+INNER JOIN ip_addresses as ip ON ip.server_id = srv.id
 WHERE svc.user_id = $1
 		"#,
         user_id
@@ -107,12 +108,156 @@ WHERE svc.user_id = $1
         .collect::<Vec<_>>())
 }
 
-pub(crate) async fn create_initial_server(
+/// Record in the `servers` table.
+///
+pub(crate) async fn create_server_record(
+    transaction: &mut PgTransaction<'_>,
+    payload: &NewServerPayload,
+) -> Result<Uuid> {
+    let record = sqlx::query!(
+        r#"
+INSERT INTO servers (host_name)
+VALUES ($1)
+RETURNING id
+        "#,
+        payload.host_name
+    )
+    .fetch_one(&mut **transaction)
+    .await?;
+
+    Ok(record.id)
+}
+
+/// Find an available IP and assign it to the new server.
+///
+pub(crate) async fn reserve_ip_for_server(
+    transaction: &mut PgTransaction<'_>,
+    server_id: Uuid,
+    payload: &NewServerPayload,
+) -> Result<String> {
+    let record = sqlx::query!(
+        r#"
+WITH available_ip AS (
+	SELECT ip.id, ip.ip_address
+	FROM ip_addresses AS ip
+	JOIN network AS n ON ip.network_id = n.id
+	WHERE ip.server_id IS NULL AND n.datacenter_name = $1
+	LIMIT 1
+	FOR UPDATE SKIP LOCKED
+)
+UPDATE ip_addresses SET server_id = $2
+WHERE id = (SELECT id FROM available_ip)
+RETURNING ip_address
+		"#,
+        payload.data_center,
+        server_id,
+    )
+    .fetch_one(&mut **transaction)
+    .await?;
+
+    Ok(record.ip_address)
+}
+
+/// Create a `services` record to link the user, server, and product.
+///
+pub(crate) async fn create_service_record(
     transaction: &mut PgTransaction<'_>,
     user_id: Uuid,
+    server_id: Uuid,
     payload: &NewServerPayload,
-) -> Result<ApiServer> {
-    todo!()
+) -> Result<Uuid> {
+    let record = sqlx::query!(
+        r#"
+INSERT INTO services (status, user_id, server_id, product_id)
+VALUES ($1, $2, $3, $4)
+RETURNING id
+        "#,
+        ServiceStatus::Pending.to_string(),
+        user_id,
+        server_id,
+        payload.product_id
+    )
+    .fetch_one(&mut **transaction)
+    .await?;
+
+    Ok(record.id)
+}
+
+/// Configurable options (CPU, RAM).
+///
+pub(crate) async fn save_config_values(
+    transaction: &mut PgTransaction<'_>,
+    service_id: Uuid,
+    payload: &NewServerPayload,
+) -> Result<()> {
+    let config_options = sqlx::query!(
+        r#"
+SELECT id, name FROM config_options WHERE name IN ('cpu_cores', 'ram_gb')
+        "#
+    )
+    .fetch_all(&mut **transaction)
+    .await?;
+
+    for option in config_options {
+        let value = match option.name.as_str() {
+            "cpu_cores" => payload.cpu_cores.unwrap_or(2).to_string(),
+            "ram_gb" => payload.ram_gb.unwrap_or(2).to_string(),
+            _ => continue,
+        };
+
+        sqlx::query!(
+            r#"
+INSERT INTO config_values (service_id, config_id, value)
+VALUES ($1, $2, $3)
+            "#,
+            service_id,
+            option.id,
+            value
+        )
+        .execute(&mut **transaction)
+        .await?;
+    }
+
+    Ok(())
+}
+
+/// Custom fields (OS, Datacenter).
+///
+pub(crate) async fn save_custom_values(
+    transaction: &mut PgTransaction<'_>,
+    service_id: Uuid,
+    payload: &NewServerPayload,
+) -> Result<()> {
+    let custom_fields = sqlx::query!(
+        r#"
+SELECT id, name FROM custom_fields
+WHERE name IN ('os', 'datacenter')
+        "#
+    )
+    .fetch_all(&mut **transaction)
+    .await?;
+
+    for field in custom_fields {
+        let value = match field.name.as_str() {
+            "os" => &payload.os,
+            "datacenter" => &payload.data_center,
+            _ => continue,
+        };
+
+        sqlx::query!(
+            r#"
+INSERT INTO custom_values (service_id, custom_field_id, value)
+VALUES ($1, $2, $3)
+            "#,
+            service_id,
+            field.id,
+            value
+        )
+        .execute(&mut **transaction)
+        .await?;
+    }
+
+    Ok(())
 }
 
 pub(crate) async fn update_initial_server(
@@ -120,23 +265,36 @@ pub(crate) async fn update_initial_server(
     server_id: Uuid,
     new_vm: VmRef,
 ) -> Result<()> {
-    todo!()
+    sqlx::query!(
+        r#"
+UPDATE servers SET vm_id = $2, node_name = $3
+WHERE id = $1
+		"#,
+        server_id,
+        new_vm.id,
+        new_vm.node,
+    )
+    .execute(&mut **transaction)
+    .await?;
+    Ok(())
 }
 
 pub(crate) async fn find_template(
     transaction: &mut PgTransaction<'_>,
     product_id: Uuid,
 ) -> Result<VmRef> {
-    todo!("Update products table to")
-    // CREATE TABLE products
-    // 	(
-    //      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    //      group_id     UUID NOT NULL REFERENCES product_groups (id),
-    //      name         TEXT NOT NULL,
-    //      virtual_type TEXT NOT NULL
-    //      template_id   INTEGER NOT NULL, +
-    //      template_node TEXT NOT NULL, +
-    // 	);
+    let record = sqlx::query!(
+        r#"
+SELECT * FROM products
+WHERE id = $1
+		"#,
+        product_id
+    )
+    .fetch_one(&mut **transaction)
+    .await?;
+
+    let vm = VmRef::new(&record.template_node, record.template_id);
+    Ok(vm)
 }
 
 pub(crate) async fn update_service_status(
@@ -144,7 +302,17 @@ pub(crate) async fn update_service_status(
     service_id: Uuid,
     status: ServiceStatus,
 ) -> Result<()> {
-    todo!()
+    sqlx::query!(
+        r#"
+UPDATE services SET status = $2
+WHERE id = $1
+		"#,
+        service_id,
+        status.to_string(),
+    )
+    .execute(&mut **transaction)
+    .await?;
+    Ok(())
 }
 
 // -----------------------------------------------------------------------------
