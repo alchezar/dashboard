@@ -9,12 +9,14 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
     #[error("Error: {0}")]
     Any(String),
-	#[error("Not found: {0}")]
-	NotFound(String),
-	#[error("Not supported: {0}")]
-	NotSupported(String),
-	#[error("Timeout after: {0} milliseconds")]
-	Timeout(f32),
+    #[error("Not found: {0}")]
+    NotFound(String),
+    #[error("Not ready: {0}")]
+    NotReady(String),
+    #[error("Not supported: {0}")]
+    NotSupported(String),
+    #[error("Timeout after: {0} milliseconds")]
+    Timeout(f32),
     #[error("Authentication error: {0}")]
     Auth(AuthError),
     #[error("Proxmox API error: {0} failed: status {1}, body: {2}")]
@@ -26,8 +28,8 @@ pub enum Error {
     EnvironmentVariable(#[from] std::env::VarError),
     #[error("Config error: {0}")]
     Config(#[from] config::ConfigError),
-	#[error("Failed to set logger: {0}")]
-	Logger(#[from] tracing::log::SetLoggerError),
+    #[error("Failed to set logger: {0}")]
+    Logger(#[from] tracing::log::SetLoggerError),
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
     #[error("IO error: {0}")]

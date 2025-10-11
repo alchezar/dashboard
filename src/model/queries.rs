@@ -1,6 +1,6 @@
 use crate::config::CONFIG;
 use crate::model::types::{ApiServer, ApiUser, DbUser, NewUser, ServiceStatus};
-use crate::prelude::Result;
+use crate::prelude::{Error, Result};
 use crate::proxmox::types::VmRef;
 use crate::web::auth::password::hash;
 use crate::web::types::NewServerPayload;
@@ -313,6 +313,82 @@ WHERE id = $1
     .execute(&mut **transaction)
     .await?;
     Ok(())
+}
+
+pub(crate) async fn get_server_by_id(
+    pool: &PgPool,
+    user_id: Uuid,
+    server_id: Uuid,
+) -> Result<ApiServer> {
+    let server = sqlx::query_as!(
+        ApiServer,
+        r#"
+SELECT
+	svc.id AS "service_id",
+	srv.id AS "server_id",
+	srv.vm_id,
+	srv.node_name,
+	ip.ip_address,
+	svc.status
+FROM services AS svc
+JOIN servers AS srv ON srv.id = svc.server_id
+INNER JOIN ip_addresses AS ip ON ip.server_id = srv.id
+WHERE svc.user_id = $1 AND srv.id = $2
+		"#,
+        user_id,
+        server_id,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(server)
+}
+
+pub(crate) async fn delete_server_record(pool: &PgPool, server_id: Uuid) -> Result<()> {
+    sqlx::query!(
+        r#"
+WITH cleared_ip AS(
+    -- Clear IP address.
+	UPDATE ip_addresses SET server_id = NULL
+	WHERE server_id = $1
+    RETURNING server_id
+)
+-- Delete the server.
+DELETE FROM servers
+WHERE id = (SELECT server_id FROM cleared_ip)
+		"#,
+        server_id,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub(crate) async fn get_server_proxmox_ref(
+    pool: &PgPool,
+    user_id: Uuid,
+    server_id: Uuid,
+) -> Result<VmRef> {
+    let record = sqlx::query!(
+        r#"
+SELECT
+	srv.vm_id,
+	srv.node_name
+FROM servers AS srv
+JOIN services AS svc ON svc.server_id = srv.id
+WHERE svc.user_id = $1 AND srv.id = $2
+		"#,
+        user_id,
+        server_id,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    match (record.node_name, record.vm_id) {
+        (Some(node_name), Some(vm_id)) => Ok(VmRef::new(&node_name, vm_id)),
+        _ => Err(Error::NotReady(format!("Server: {}", server_id))),
+    }
 }
 
 // -----------------------------------------------------------------------------

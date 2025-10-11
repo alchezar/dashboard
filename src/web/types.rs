@@ -42,3 +42,17 @@ pub struct NewServerPayload {
     pub os: String,
     pub data_center: String,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct ServerActionPayload {
+    pub action: ServerAction,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ServerAction {
+    Start,
+    Stop,
+    Shutdown,
+    Reboot,
+}

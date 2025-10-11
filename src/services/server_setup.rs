@@ -1,11 +1,11 @@
-﻿use crate::error::{Error, Result};
+﻿use crate::error::Result;
 use crate::model::queries;
 use crate::model::types::{ApiServer, ServiceStatus};
 use crate::prelude::AppState;
-use crate::proxmox::types::{TaskRef, TaskStatus, VmRef};
+use crate::proxmox::types::{TaskRef, VmRef};
+use crate::services::wait_until_finish;
 use crate::web::types::NewServerPayload;
 use sqlx::PgTransaction;
-use std::time::{Duration, Instant};
 use uuid::Uuid;
 
 pub async fn setup_new_server(app_state: AppState, user_id: Uuid, payload: NewServerPayload) {
@@ -14,7 +14,7 @@ pub async fn setup_new_server(app_state: AppState, user_id: Uuid, payload: NewSe
     let mut transaction = match transaction_result {
         Ok(tx) => tx,
         Err(er) => {
-            tracing::error!(target: "!! setup", error = ?er, "Failed to begin transaction!");
+            tracing::error!(target: "setup", error = ?er, "Failed to begin transaction!");
             return;
         }
     };
@@ -24,7 +24,7 @@ pub async fn setup_new_server(app_state: AppState, user_id: Uuid, payload: NewSe
     let (server_id, service_id) = match create_result {
         Ok(server) => (server.server_id, server.service_id),
         Err(error) => {
-            tracing::error!(target: "!! setup", error = ?error, "Failed to create initial server!");
+            tracing::error!(target: "setup", error = ?error, "Failed to create initial server!");
             return;
         }
     };
@@ -92,33 +92,6 @@ async fn service_setup(
     Ok(())
 }
 
-/// Wait until task is finished.
-///
-async fn wait_until_finish(
-    app_state: &AppState,
-    task: TaskRef,
-    wait_secs: u64,
-    timeout: Option<u64>,
-) -> Result<()> {
-    let start = Instant::now();
-    let timeout = Duration::from_secs(timeout.unwrap_or(30));
-
-    loop {
-        let elapsed = start.elapsed();
-        if elapsed > timeout {
-            return Err(Error::Timeout(elapsed.as_secs_f32()));
-        }
-
-        match app_state.proxmox.task_status(&task).await? {
-            TaskStatus::Pending => tokio::time::sleep(Duration::from_secs(wait_secs)).await,
-            TaskStatus::Completed => break,
-            TaskStatus::Failed(error) => return Err(Error::Any(error)),
-        }
-    }
-
-    Ok(())
-}
-
 async fn finish_transaction(
     update_result: Result<()>,
     transaction: PgTransaction<'_>,
@@ -126,17 +99,17 @@ async fn finish_transaction(
 ) {
     match update_result {
         Ok(_) => match transaction.commit().await {
-            Ok(_) => tracing::info!(target: ">> setup", "Server set up and state committed!"),
+            Ok(_) => tracing::info!(target: "setup", "Server set up and state committed!"),
             Err(commit_error) => {
-                tracing::error!(target: "!! setup", error = ?commit_error, "Failed to commit transaction!")
+                tracing::error!(target: "setup", error = ?commit_error, "Failed to commit transaction!")
             }
         },
         Err(status_error) => {
             if let Err(rollback_error) = transaction.rollback().await {
-                tracing::error!(target: "!! setup", error = ?rollback_error, "Failed to rollback transaction!")
+                tracing::error!(target: "setup", error = ?rollback_error, "Failed to rollback transaction!")
             };
             tracing::error!(
-                target: "!! setup",
+                target: "setup",
                 service_id = ?service_id,
                 error = ?status_error,
                 "Failed to update service status!"

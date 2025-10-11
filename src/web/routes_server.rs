@@ -1,23 +1,20 @@
 //! Protected routes
-#![allow(unused)]
 
 use crate::model::queries;
-use crate::model::types::{ApiServer, ApiUser};
-use crate::prelude::{AppState, ProxmoxError};
-use crate::prelude::{Error, Result};
-use crate::proxmox::types::{TaskRef, TaskStatus, UniqueProcessId, VmConfig, VmRef};
-use crate::services::server_setup;
+use crate::model::types::ApiServer;
+use crate::prelude::AppState;
+use crate::prelude::Result;
+use crate::services::{server_deletion, server_setup};
 use crate::web::auth::Claims;
 use crate::web::mw_auth;
-use crate::web::types::{NewServerPayload, Response, UserResponse};
-use axum::extract::State;
+use crate::web::types::{
+    NewServerPayload, Response, ServerAction, ServerActionPayload, UserResponse,
+};
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Extension, Json};
 use axum::{Router, middleware};
-use serde_json::{Value, json};
-use std::time::Duration;
 use uuid::Uuid;
 
 pub fn routes() -> Router<AppState> {
@@ -121,16 +118,76 @@ async fn create_server(
     State(app_state): State<AppState>,
     Extension(claims): Extension<Claims>,
     Json(payload): Json<NewServerPayload>,
-) -> impl IntoResponse {
+) -> Result<StatusCode> {
     tokio::spawn(server_setup::setup_new_server(
         app_state.clone(),
         claims.user_id,
         payload,
     ));
 
-    StatusCode::ACCEPTED.into_response()
+    Ok(StatusCode::ACCEPTED)
 }
 
-async fn get_server(State(app_state): State<AppState>, Extension(claims): Extension<Claims>) {}
-async fn delete_server(State(app_state): State<AppState>, Extension(claims): Extension<Claims>) {}
-async fn server_action(State(app_state): State<AppState>, Extension(claims): Extension<Claims>) {}
+/// Retrieves and returns the details of a specific server.
+///
+/// # Arguments
+///
+/// * `State(app_state)`: Shared application state.
+/// * `Extension(claims)`: Claims extracted from the JWT.
+/// * `Path(server_id)`: Unique ID of the server to retrieve.
+///
+/// # Returns
+///
+/// On success, returns a Json response with the user's server.
+/// [`ApiUser`].
+///
+async fn get_server(
+    State(app_state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(server_id): Path<Uuid>,
+) -> Result<Json<Response<ApiServer>>> {
+    let server = queries::get_server_by_id(&app_state.pool, claims.user_id, server_id).await?;
+    tracing::info!(target: ">> handler", server_id = ?server.server_id, "Server found");
+
+    Ok(Json(Response::new(server)))
+}
+/// Deletes a specific server and all associated data from the database
+///
+/// # Arguments
+///
+/// * `State(app_state)`: Shared application state.
+/// * `Extension(claims)`: Claims extracted from the JWT.
+/// * `Path(server_id)`: Unique ID of the server to delete.
+///
+async fn delete_server(
+    State(app_state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(server_id): Path<Uuid>,
+) -> Result<StatusCode> {
+    tokio::spawn(server_deletion::delete_server(
+        app_state.clone(),
+        claims.user_id,
+        server_id,
+    ));
+
+    Ok(StatusCode::ACCEPTED)
+}
+
+async fn server_action(
+    State(app_state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(server_id): Path<Uuid>,
+    Json(payload): Json<ServerActionPayload>,
+) -> Result<StatusCode> {
+    let vm = queries::get_server_proxmox_ref(&app_state.pool, claims.user_id, server_id).await?;
+
+    let upid = match payload.action {
+        ServerAction::Start => app_state.proxmox.start(vm).await?,
+        ServerAction::Stop => app_state.proxmox.stop(vm).await?,
+        ServerAction::Shutdown => app_state.proxmox.shutdown(vm).await?,
+        ServerAction::Reboot => app_state.proxmox.reboot(vm).await?,
+    };
+    tracing::info!(target: ">> handler", action = ?payload.action, upid = ?upid, "Server action");
+
+    Ok(StatusCode::ACCEPTED)
+}

@@ -83,18 +83,6 @@ pub struct LoginPayload {
 
 // -----------------------------------------------------------------------------
 
-/// Represents a row from the `services` table.
-///
-#[allow(unused)]
-#[derive(Debug, Clone, FromRow)]
-pub struct Service {
-    id: Uuid,
-    status: ServiceStatus,
-    user_id: Uuid,
-    server_id: Uuid,
-    product_id: Uuid,
-}
-
 /// Represents the status from the `services` table.
 ///
 #[derive(Debug, Clone, Display, Serialize, Deserialize)]
@@ -111,6 +99,12 @@ impl From<&str> for ServiceStatus {
             "active" => ServiceStatus::Active,
             _ => ServiceStatus::Failed,
         }
+    }
+}
+
+impl From<String> for ServiceStatus {
+    fn from(value: String) -> Self {
+        Self::from(value.as_str())
     }
 }
 
