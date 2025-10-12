@@ -298,11 +298,14 @@ WHERE id = $1
     Ok(vm)
 }
 
-pub(crate) async fn update_service_status(
-    transaction: &mut PgTransaction<'_>,
+pub(crate) async fn update_service_status<'e, E>(
+    executor: E,
     service_id: Uuid,
     status: ServiceStatus,
-) -> Result<()> {
+) -> Result<()>
+where
+    E: Executor<'e, Database = Postgres>,
+{
     sqlx::query!(
         r#"
 UPDATE services SET status = $2
@@ -311,7 +314,7 @@ WHERE id = $1
         service_id,
         status.to_string(),
     )
-    .execute(&mut **transaction)
+    .execute(executor)
     .await?;
     Ok(())
 }

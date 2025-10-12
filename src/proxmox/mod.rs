@@ -113,7 +113,20 @@ pub trait Proxmox {
     ///
     async fn delete(&self, vm: VmRef) -> Result<UniqueProcessId>;
 
-	async fn vm_config(&self, vm: VmRef, config: VmConfig) -> Result<UniqueProcessId>;
+    /// Set virtual machine options.
+    ///
+    /// # Arguments
+    ///
+    /// * `vm`: Target virtual machine on the Proxmox cluster.
+    /// * `config`: Configuration options to apply to the virtual machine.
+    ///
+    /// # Proxmox API
+    ///
+    /// This method corresponds to the following Proxmox API endpoint:
+    ///
+    /// [`POST /api2/json/nodes/{node}/qemu/{vmid}/config`](https://pve.proxmox.com/pve-docs/api-viewer/index.html#/nodes/{node}/qemu/{vmid}/config)
+    ///
+    async fn vm_config(&self, vm: VmRef, config: VmConfig) -> Result<UniqueProcessId>;
 
     /// Get virtual machine status.
     ///
