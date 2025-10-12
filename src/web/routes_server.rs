@@ -4,12 +4,10 @@ use crate::model::queries;
 use crate::model::types::ApiServer;
 use crate::prelude::AppState;
 use crate::prelude::Result;
-use crate::services::{server_deletion, server_setup};
+use crate::services::{action, deletion, setup};
 use crate::web::auth::Claims;
 use crate::web::mw_auth;
-use crate::web::types::{
-    NewServerPayload, Response, ServerAction, ServerActionPayload, UserResponse,
-};
+use crate::web::types::{NewServerPayload, Response, ServerActionPayload, UserResponse};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
@@ -119,11 +117,7 @@ async fn create_server(
     Extension(claims): Extension<Claims>,
     Json(payload): Json<NewServerPayload>,
 ) -> Result<StatusCode> {
-    tokio::spawn(server_setup::setup_new_server(
-        app_state.clone(),
-        claims.user_id,
-        payload,
-    ));
+    tokio::spawn(setup::run(app_state.clone(), claims.user_id, payload));
 
     Ok(StatusCode::ACCEPTED)
 }
@@ -151,6 +145,7 @@ async fn get_server(
 
     Ok(Json(Response::new(server)))
 }
+
 /// Deletes a specific server and all associated data from the database
 ///
 /// # Arguments
@@ -159,35 +154,45 @@ async fn get_server(
 /// * `Extension(claims)`: Claims extracted from the JWT.
 /// * `Path(server_id)`: Unique ID of the server to delete.
 ///
+/// # Returns
+///
+/// This handler always returns an `HTTP 202 Accepted`
+///
 async fn delete_server(
     State(app_state): State<AppState>,
     Extension(claims): Extension<Claims>,
     Path(server_id): Path<Uuid>,
 ) -> Result<StatusCode> {
-    tokio::spawn(server_deletion::delete_server(
-        app_state.clone(),
-        claims.user_id,
-        server_id,
-    ));
+    tokio::spawn(deletion::run(app_state.clone(), claims.user_id, server_id));
 
     Ok(StatusCode::ACCEPTED)
 }
 
+/// Makes specific action on the server.
+///
+/// # Arguments
+///
+/// * `State(app_state)`: Shared application state.
+/// * `Extension(claims)`: Claims extracted from the JWT.
+/// * `Path(server_id)`: Unique ID of the server to delete.
+/// * `Json(payload)`: specific action for the server.
+///
+/// # Returns
+///
+/// This handler always returns an `HTTP 202 Accepted`
+///
 async fn server_action(
     State(app_state): State<AppState>,
     Extension(claims): Extension<Claims>,
     Path(server_id): Path<Uuid>,
     Json(payload): Json<ServerActionPayload>,
 ) -> Result<StatusCode> {
-    let vm = queries::get_server_proxmox_ref(&app_state.pool, claims.user_id, server_id).await?;
-
-    let upid = match payload.action {
-        ServerAction::Start => app_state.proxmox.start(vm).await?,
-        ServerAction::Stop => app_state.proxmox.stop(vm).await?,
-        ServerAction::Shutdown => app_state.proxmox.shutdown(vm).await?,
-        ServerAction::Reboot => app_state.proxmox.reboot(vm).await?,
-    };
-    tracing::info!(target: ">> handler", action = ?payload.action, upid = ?upid, "Server action");
+    tokio::spawn(action::run(
+        app_state.clone(),
+        claims.user_id,
+        server_id,
+        payload.action,
+    ));
 
     Ok(StatusCode::ACCEPTED)
 }

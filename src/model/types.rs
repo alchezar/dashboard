@@ -108,6 +108,45 @@ impl From<String> for ServiceStatus {
     }
 }
 
+#[derive(Debug, Clone, Display, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerStatus {
+    // Stable statuses.
+    Running,
+    Stopped,
+    Failed,
+    // Lifecycle.
+    SettingUp,
+    Deleting,
+    // Progress statuses.
+    Starting,
+    Stopping,
+    Rebooting,
+    ShuttingDown,
+}
+
+impl From<&str> for ServerStatus {
+    fn from(value: &str) -> Self {
+        match value.to_lowercase().as_str() {
+            "running" => ServerStatus::Running,
+            "stopped" => ServerStatus::Stopped,
+            "setting_up" => ServerStatus::SettingUp,
+            "deleting" => ServerStatus::Deleting,
+            "starting" => ServerStatus::Starting,
+            "stopping" => ServerStatus::Stopping,
+            "rebooting" => ServerStatus::Rebooting,
+            "shutting_down" => ServerStatus::ShuttingDown,
+            _ => ServerStatus::Failed,
+        }
+    }
+}
+
+impl From<String> for ServerStatus {
+    fn from(value: String) -> Self {
+        Self::from(value.as_str())
+    }
+}
+
 /// Represents a row from the `servers` table.
 ///
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -127,5 +166,5 @@ pub struct ApiServer {
     pub vm_id: Option<i32>,
     pub node_name: Option<String>,
     pub ip_address: String,
-    pub status: ServiceStatus,
+    pub status: ServerStatus,
 }

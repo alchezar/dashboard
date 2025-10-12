@@ -4,7 +4,8 @@ CREATE TABLE servers
     id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     vm_id     INTEGER,
     node_name TEXT,
-    host_name TEXT NOT NULL
+    host_name TEXT NOT NULL,
+    status    TEXT NOT NULL
 );
 
 -- Create services table

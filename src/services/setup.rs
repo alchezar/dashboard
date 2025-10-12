@@ -1,14 +1,14 @@
 ﻿use crate::error::Result;
 use crate::model::queries;
-use crate::model::types::{ApiServer, ServiceStatus};
+use crate::model::types::{ApiServer, ServerStatus, ServiceStatus};
 use crate::prelude::AppState;
 use crate::proxmox::types::{TaskRef, VmRef};
-use crate::services::wait_until_finish;
+use crate::services;
 use crate::web::types::NewServerPayload;
 use sqlx::PgTransaction;
 use uuid::Uuid;
 
-pub async fn setup_new_server(app_state: AppState, user_id: Uuid, payload: NewServerPayload) {
+pub async fn run(app_state: AppState, user_id: Uuid, payload: NewServerPayload) {
     // Create a transaction for a chain of all sequential queries.
     let transaction_result = app_state.pool.begin().await;
     let mut transaction = match transaction_result {
@@ -38,7 +38,7 @@ pub async fn setup_new_server(app_state: AppState, user_id: Uuid, payload: NewSe
 
     // Update server status based on the setup result and finish transaction.
     let update_result = queries::update_service_status(&mut transaction, service_id, status).await;
-    finish_transaction(update_result, transaction, service_id).await;
+    services::finish_service(update_result, transaction).await;
 }
 
 async fn create_initial_server(
@@ -59,7 +59,7 @@ async fn create_initial_server(
         vm_id: None,
         node_name: None,
         ip_address,
-        status: ServiceStatus::Pending,
+        status: ServerStatus::SettingUp,
     })
 }
 
@@ -75,7 +75,7 @@ async fn service_setup(
     // Clone new Proxmox server.
     let (new_vmid, clone_upid) = app_state.proxmox.create(template_vm.clone()).await?;
     let clone_task = TaskRef::new(&template_vm.node, &clone_upid);
-    wait_until_finish(&app_state, clone_task, 1, None).await?;
+    services::wait_until_finish(&app_state.proxmox, clone_task, 1, None).await?;
 
     // Save vmid to the database.
     let new_vm = VmRef::new(&template_vm.node, new_vmid);
@@ -87,33 +87,7 @@ async fn service_setup(
         .vm_config(new_vm, payload.clone().try_into()?)
         .await?;
     let config_task = TaskRef::new(&template_vm.node, &config_upid);
-    wait_until_finish(&app_state, config_task, 1, None).await?;
+    services::wait_until_finish(&app_state.proxmox, config_task, 1, None).await?;
 
     Ok(())
-}
-
-async fn finish_transaction(
-    update_result: Result<()>,
-    transaction: PgTransaction<'_>,
-    service_id: Uuid,
-) {
-    match update_result {
-        Ok(_) => match transaction.commit().await {
-            Ok(_) => tracing::info!(target: "setup", "Server set up and state committed!"),
-            Err(commit_error) => {
-                tracing::error!(target: "setup", error = ?commit_error, "Failed to commit transaction!")
-            }
-        },
-        Err(status_error) => {
-            if let Err(rollback_error) = transaction.rollback().await {
-                tracing::error!(target: "setup", error = ?rollback_error, "Failed to rollback transaction!")
-            };
-            tracing::error!(
-                target: "setup",
-                service_id = ?service_id,
-                error = ?status_error,
-                "Failed to update service status!"
-            );
-        }
-    }
 }

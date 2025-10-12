@@ -1,11 +1,11 @@
 use crate::config::CONFIG;
-use crate::model::types::{ApiServer, ApiUser, DbUser, NewUser, ServiceStatus};
+use crate::model::types::{ApiServer, ApiUser, DbUser, NewUser, ServerStatus, ServiceStatus};
 use crate::prelude::{Error, Result};
 use crate::proxmox::types::VmRef;
 use crate::web::auth::password::hash;
 use crate::web::types::NewServerPayload;
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{PgPool, PgTransaction};
+use sqlx::{Executor, PgPool, PgTransaction, Postgres};
 use uuid::Uuid;
 
 #[tracing::instrument(level = "trace", target = "-- database")]
@@ -84,7 +84,7 @@ SELECT
 	srv.vm_id,
 	srv.node_name,
 	ip.ip_address,
-	svc.status
+	srv.status
 FROM services AS svc
 JOIN servers AS srv ON srv.id = svc.server_id
 INNER JOIN ip_addresses as ip ON ip.server_id = srv.id
@@ -116,11 +116,12 @@ pub(crate) async fn create_server_record(
 ) -> Result<Uuid> {
     let record = sqlx::query!(
         r#"
-INSERT INTO servers (host_name)
-VALUES ($1)
+INSERT INTO servers (host_name, status)
+VALUES ($1, $2)
 RETURNING id
         "#,
-        payload.host_name
+        payload.host_name,
+        ServerStatus::SettingUp.to_string(),
     )
     .fetch_one(&mut **transaction)
     .await?;
@@ -315,6 +316,28 @@ WHERE id = $1
     Ok(())
 }
 
+pub(crate) async fn update_server_status<'e, E>(
+    executor: E,
+    server_id: Uuid,
+    status: ServerStatus,
+) -> Result<()>
+where
+    E: Executor<'e, Database = Postgres>,
+{
+    sqlx::query!(
+        r#"
+UPDATE servers SET status = $2
+WHERE id = $1
+		"#,
+        server_id,
+        status.to_string(),
+    )
+    .execute(executor)
+    .await?;
+
+    Ok(())
+}
+
 pub(crate) async fn get_server_by_id(
     pool: &PgPool,
     user_id: Uuid,
@@ -329,7 +352,7 @@ SELECT
 	srv.vm_id,
 	srv.node_name,
 	ip.ip_address,
-	svc.status
+	srv.status
 FROM services AS svc
 JOIN servers AS srv ON srv.id = svc.server_id
 INNER JOIN ip_addresses AS ip ON ip.server_id = srv.id
@@ -344,32 +367,43 @@ WHERE svc.user_id = $1 AND srv.id = $2
     Ok(server)
 }
 
-pub(crate) async fn delete_server_record(pool: &PgPool, server_id: Uuid) -> Result<()> {
+pub(crate) async fn delete_server_record(
+    transaction: &mut PgTransaction<'_>,
+    server_id: Uuid,
+) -> Result<()> {
+    // Clear IP address.
     sqlx::query!(
         r#"
-WITH cleared_ip AS(
-    -- Clear IP address.
-	UPDATE ip_addresses SET server_id = NULL
-	WHERE server_id = $1
-    RETURNING server_id
-)
--- Delete the server.
+UPDATE ip_addresses SET server_id = NULL
+WHERE server_id = $1
+        "#,
+        server_id,
+    )
+    .execute(&mut **transaction)
+    .await?;
+
+    // Delete the server.
+    sqlx::query!(
+        r#"
 DELETE FROM servers
-WHERE id = (SELECT server_id FROM cleared_ip)
+WHERE id = $1
 		"#,
         server_id,
     )
-    .execute(pool)
+    .execute(&mut **transaction)
     .await?;
 
     Ok(())
 }
 
-pub(crate) async fn get_server_proxmox_ref(
-    pool: &PgPool,
+pub(crate) async fn get_server_proxmox_ref<'e, E>(
+    executor: E,
     user_id: Uuid,
     server_id: Uuid,
-) -> Result<VmRef> {
+) -> Result<VmRef>
+where
+    E: Executor<'e, Database = Postgres>,
+{
     let record = sqlx::query!(
         r#"
 SELECT
@@ -382,7 +416,7 @@ WHERE svc.user_id = $1 AND srv.id = $2
         user_id,
         server_id,
     )
-    .fetch_one(pool)
+    .fetch_one(executor)
     .await?;
 
     match (record.node_name, record.vm_id) {

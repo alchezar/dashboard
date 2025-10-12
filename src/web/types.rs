@@ -53,6 +53,6 @@ pub struct ServerActionPayload {
 pub enum ServerAction {
     Start,
     Stop,
-    Shutdown,
     Reboot,
+    Shutdown,
 }
