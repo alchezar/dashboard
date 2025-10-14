@@ -16,7 +16,7 @@ pub async fn connect_to_db() -> Result<PgPool> {
     Ok(pool)
 }
 
-pub(crate) async fn add_new_user(pool: &PgPool, new_user: NewUser) -> Result<ApiUser> {
+pub async fn add_new_user(pool: &PgPool, new_user: NewUser) -> Result<ApiUser> {
     Ok(sqlx::query_as!(
         DbUser,
         r#"
@@ -50,7 +50,7 @@ RETURNING *
     .into())
 }
 
-pub(crate) async fn get_user_by_id(pool: &PgPool, user_id: Uuid) -> Result<ApiUser> {
+pub async fn get_user_by_id(pool: &PgPool, user_id: Uuid) -> Result<ApiUser> {
     Ok(sqlx::query_as!(
         DbUser,
         r#"
@@ -63,7 +63,7 @@ SELECT * FROM users WHERE id = $1
     .into())
 }
 
-pub(crate) async fn get_user_by_email(pool: &PgPool, email: &str) -> Result<DbUser> {
+pub async fn get_user_by_email(pool: &PgPool, email: &str) -> Result<DbUser> {
     Ok(sqlx::query_as!(
         DbUser,
         r#"
@@ -75,7 +75,7 @@ SELECT * FROM users WHERE email = $1
     .await?)
 }
 
-pub(crate) async fn get_servers_for_user(pool: &PgPool, user_id: Uuid) -> Result<Vec<ApiServer>> {
+pub async fn get_servers_for_user(pool: &PgPool, user_id: Uuid) -> Result<Vec<ApiServer>> {
     let rows = sqlx::query!(
         r#"
 SELECT
@@ -110,7 +110,7 @@ WHERE svc.user_id = $1
 
 /// Record in the `servers` table.
 ///
-pub(crate) async fn create_server_record(
+pub async fn create_server_record(
     transaction: &mut PgTransaction<'_>,
     payload: &NewServerPayload,
 ) -> Result<Uuid> {
@@ -131,7 +131,7 @@ RETURNING id
 
 /// Find an available IP and assign it to the new server.
 ///
-pub(crate) async fn reserve_ip_for_server(
+pub async fn reserve_ip_for_server(
     transaction: &mut PgTransaction<'_>,
     server_id: Uuid,
     payload: &NewServerPayload,
@@ -161,7 +161,7 @@ RETURNING ip_address
 
 /// Create a `services` record to link the user, server, and product.
 ///
-pub(crate) async fn create_service_record(
+pub async fn create_service_record(
     transaction: &mut PgTransaction<'_>,
     user_id: Uuid,
     server_id: Uuid,
@@ -186,7 +186,7 @@ RETURNING id
 
 /// Configurable options (CPU, RAM).
 ///
-pub(crate) async fn save_config_values(
+pub async fn save_config_values(
     transaction: &mut PgTransaction<'_>,
     service_id: Uuid,
     payload: &NewServerPayload,
@@ -224,7 +224,7 @@ VALUES ($1, $2, $3)
 
 /// Custom fields (OS, Datacenter).
 ///
-pub(crate) async fn save_custom_values(
+pub async fn save_custom_values(
     transaction: &mut PgTransaction<'_>,
     service_id: Uuid,
     payload: &NewServerPayload,
@@ -261,7 +261,7 @@ VALUES ($1, $2, $3)
     Ok(())
 }
 
-pub(crate) async fn update_initial_server(
+pub async fn update_initial_server(
     transaction: &mut PgTransaction<'_>,
     server_id: Uuid,
     new_vm: VmRef,
@@ -280,10 +280,7 @@ WHERE id = $1
     Ok(())
 }
 
-pub(crate) async fn find_template(
-    transaction: &mut PgTransaction<'_>,
-    product_id: Uuid,
-) -> Result<VmRef> {
+pub async fn find_template(transaction: &mut PgTransaction<'_>, product_id: Uuid) -> Result<VmRef> {
     let record = sqlx::query!(
         r#"
 SELECT * FROM products
@@ -298,7 +295,7 @@ WHERE id = $1
     Ok(vm)
 }
 
-pub(crate) async fn update_service_status<'e, E>(
+pub async fn update_service_status<'e, E>(
     executor: E,
     service_id: Uuid,
     status: ServiceStatus,
@@ -319,7 +316,7 @@ WHERE id = $1
     Ok(())
 }
 
-pub(crate) async fn update_server_status<'e, E>(
+pub async fn update_server_status<'e, E>(
     executor: E,
     server_id: Uuid,
     status: ServerStatus,
@@ -341,11 +338,7 @@ WHERE id = $1
     Ok(())
 }
 
-pub(crate) async fn get_server_by_id(
-    pool: &PgPool,
-    user_id: Uuid,
-    server_id: Uuid,
-) -> Result<ApiServer> {
+pub async fn get_server_by_id(pool: &PgPool, user_id: Uuid, server_id: Uuid) -> Result<ApiServer> {
     let server = sqlx::query_as!(
         ApiServer,
         r#"
@@ -370,7 +363,7 @@ WHERE svc.user_id = $1 AND srv.id = $2
     Ok(server)
 }
 
-pub(crate) async fn delete_server_record(
+pub async fn delete_server_record(
     transaction: &mut PgTransaction<'_>,
     server_id: Uuid,
 ) -> Result<()> {
@@ -399,7 +392,7 @@ WHERE id = $1
     Ok(())
 }
 
-pub(crate) async fn get_server_proxmox_ref<'e, E>(
+pub async fn get_server_proxmox_ref<'e, E>(
     executor: E,
     user_id: Uuid,
     server_id: Uuid,

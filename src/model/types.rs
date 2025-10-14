@@ -108,7 +108,7 @@ impl From<String> for ServiceStatus {
     }
 }
 
-#[derive(Debug, Clone, Display, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Display, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ServerStatus {
     // Stable statuses.

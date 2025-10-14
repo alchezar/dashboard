@@ -1,4 +1,4 @@
-﻿use crate::helpers::{self, TestApp};
+﻿use crate::helpers::{TestApp, payload, requests};
 use dashboard::web::types::TokenResponse;
 use sqlx::PgPool;
 
@@ -8,13 +8,9 @@ async fn should_register(pool: PgPool) {
     let app = TestApp::new(pool).await;
 
     // Act
-    let response = app
-        .client
-        .post(&format!("{}/register", &app.url))
-        .json(&helpers::register_user_payload())
-        .send()
-        .await
-        .unwrap();
+    let endpoint = format!("{}/register", &app.url);
+    let payload = payload::register_user();
+    let response = requests::post_response(&app, &endpoint, "", &payload).await;
 
     // Assert
     assert!(response.status().is_success());
@@ -26,21 +22,14 @@ async fn should_register(pool: PgPool) {
 async fn should_login(pool: PgPool) {
     // Arrange
     let app = TestApp::new(pool).await;
-    app.client
-        .post(&format!("{}/register", &app.url))
-        .json(&helpers::register_user_payload())
-        .send()
-        .await
-        .unwrap();
+    let endpoint = format!("{}/register", &app.url);
+    let payload = payload::register_user();
+    requests::post_response(&app, &endpoint, "", &payload).await;
 
     // Act
-    let response = app
-        .client
-        .post(&format!("{}/login", &app.url))
-        .json(&helpers::login_user_payload())
-        .send()
-        .await
-        .unwrap();
+    let endpoint = format!("{}/login", &app.url);
+    let payload = payload::login_user();
+    let response = requests::post_response(&app, &endpoint, "", &payload).await;
 
     // Assert
     assert!(response.status().is_success());
