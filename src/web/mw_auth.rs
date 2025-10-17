@@ -5,10 +5,7 @@ use axum::http::Request;
 use axum::middleware::Next;
 use axum::response::Response;
 
-pub async fn mw_require_auth(
-    mut request: Request<Body>,
-    next: Next,
-) -> Result<Response> {
+pub async fn mw_require_auth(mut request: Request<Body>, next: Next) -> Result<Response> {
     let token = request
         .headers()
         .get("Authorization")

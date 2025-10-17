@@ -1,5 +1,7 @@
 use crate::config::CONFIG;
-use crate::model::types::{ApiServer, ApiUser, DbUser, NewUser, ServerStatus, ServiceStatus};
+use crate::model::types::{
+    ApiServer, ApiUser, DbUser, IpConfig, NewUser, ServerStatus, ServiceStatus,
+};
 use crate::prelude::{Error, Result};
 use crate::proxmox::types::VmRef;
 use crate::web::auth::password::hash;
@@ -135,28 +137,43 @@ pub async fn reserve_ip_for_server(
     transaction: &mut PgTransaction<'_>,
     server_id: Uuid,
     payload: &NewServerPayload,
-) -> Result<String> {
-    let record = sqlx::query!(
+) -> Result<IpConfig> {
+    // Find available IP address.
+    let network_details = sqlx::query!(
         r#"
-WITH available_ip AS (
-	SELECT ip.id, ip.ip_address
-	FROM ip_addresses AS ip
-	JOIN network AS n ON ip.network_id = n.id
-	WHERE ip.server_id IS NULL AND n.datacenter_name = $1
-	LIMIT 1
-	FOR UPDATE SKIP LOCKED
-)
-UPDATE ip_addresses SET server_id = $2
-WHERE id = (SELECT id FROM available_ip)
-RETURNING ip_address
+SELECT
+	ip.id AS "ip_id",
+	ip.ip_address,
+	n.gateway,
+	n.subnet_mask
+FROM ip_addresses AS ip
+JOIN network AS n ON ip.network_id = n.id
+WHERE ip.server_id IS NULL AND n.datacenter_name = $1
+LIMIT 1
+FOR UPDATE SKIP LOCKED
 		"#,
-        payload.data_center,
-        server_id,
+        payload.datacenter,
     )
     .fetch_one(&mut **transaction)
     .await?;
 
-    Ok(record.ip_address)
+    // Reserve IP address.
+    sqlx::query!(
+        r#"
+UPDATE ip_addresses SET server_id = $1
+WHERE id = $2
+		"#,
+        server_id,
+        network_details.ip_id,
+    )
+    .execute(&mut **transaction)
+    .await?;
+
+    Ok(IpConfig {
+        ip_address: network_details.ip_address,
+        gateway: network_details.gateway,
+        subnet_mask: network_details.subnet_mask,
+    })
 }
 
 /// Create a `services` record to link the user, server, and product.
@@ -165,18 +182,20 @@ pub async fn create_service_record(
     transaction: &mut PgTransaction<'_>,
     user_id: Uuid,
     server_id: Uuid,
+    template_id: Uuid,
     payload: &NewServerPayload,
 ) -> Result<Uuid> {
     let record = sqlx::query!(
         r#"
-INSERT INTO services (status, user_id, server_id, product_id)
-VALUES ($1, $2, $3, $4)
+INSERT INTO services (status, user_id, server_id, product_id, template_id)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id
         "#,
         ServiceStatus::Pending.to_string(),
         user_id,
         server_id,
-        payload.product_id
+        payload.product_id,
+        template_id,
     )
     .fetch_one(&mut **transaction)
     .await?;
@@ -241,7 +260,7 @@ WHERE name IN ('os', 'datacenter')
     for field in custom_fields {
         let value = match field.name.as_str() {
             "os" => &payload.os,
-            "datacenter" => &payload.data_center,
+            "datacenter" => &payload.datacenter,
             _ => continue,
         };
 
@@ -280,18 +299,39 @@ WHERE id = $1
     Ok(())
 }
 
-pub async fn find_template(transaction: &mut PgTransaction<'_>, product_id: Uuid) -> Result<VmRef> {
+pub async fn find_template_id(transaction: &mut PgTransaction<'_>, os_name: &str) -> Result<Uuid> {
     let record = sqlx::query!(
         r#"
-SELECT * FROM products
-WHERE id = $1
+SELECT * FROM templates
+WHERE os_name = $1
 		"#,
-        product_id
+        os_name,
     )
     .fetch_one(&mut **transaction)
     .await?;
 
-    let vm = VmRef::new(&record.template_node, record.template_id);
+    Ok(record.id)
+}
+
+pub async fn find_template(
+    transaction: &mut PgTransaction<'_>,
+    service_id: &Uuid,
+) -> Result<VmRef> {
+    let record = sqlx::query!(
+        r#"
+SELECT
+	t.template_node,
+	t.template_vmid
+FROM services AS s
+JOIN templates AS t ON t.id = s.template_id
+WHERE s.id = $1
+		"#,
+        service_id
+    )
+    .fetch_one(&mut **transaction)
+    .await?;
+
+    let vm = VmRef::new(&record.template_node, record.template_vmid);
     Ok(vm)
 }
 

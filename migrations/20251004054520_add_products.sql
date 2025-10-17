@@ -1,12 +1,19 @@
 -- Create products table
 CREATE TABLE products
 (
+    id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id UUID NOT NULL REFERENCES product_groups (id),
+    name     TEXT NOT NULL
+);
+
+-- Create custom templates table
+CREATE TABLE templates
+(
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    group_id      UUID    NOT NULL REFERENCES product_groups (id),
-    name          TEXT    NOT NULL,
-    virtual_type  TEXT    NOT NULL,
-    template_id   INTEGER NOT NULL,
-    template_node TEXT    NOT NULL
+    os_name       TEXT    NOT NULL,
+    template_vmid INTEGER NOT NULL,
+    template_node TEXT    NOT NULL,
+    virtual_type  TEXT    NOT NULL
 );
 
 -- Create custom fields table

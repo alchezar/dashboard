@@ -153,23 +153,30 @@ impl TaskRef {
 #[derive(Debug, Default, Serialize)]
 pub struct VmConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cpu_cores: Option<i32>,
+    pub ipconfig0: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub ram_memory: Option<i32>,
+    pub cores: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub os_template: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub datacenter: Option<String>,
+    pub memory: Option<i32>,
+}
+
+impl VmConfig {
+    pub fn new(ip_config: String, cpu_cores: Option<i32>, memory_gb: Option<i32>) -> Self {
+        Self {
+            cores: cpu_cores,
+            memory: memory_gb.map(|ram| ram * 1024),
+            ipconfig0: Some(ip_config),
+        }
+    }
 }
 
 impl TryFrom<NewServerPayload> for VmConfig {
     type Error = Error;
     fn try_from(payload: NewServerPayload) -> Result<Self> {
         Ok(Self {
-            cpu_cores: payload.cpu_cores,
-            ram_memory: payload.ram_gb,
-            os_template: Some(payload.os),
-            datacenter: Some(payload.data_center),
+            cores: payload.cpu_cores,
+            memory: payload.ram_gb.map(|ram| ram * 1024),
+            ipconfig0: payload.ip_config,
         })
     }
 }

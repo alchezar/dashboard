@@ -38,8 +38,10 @@ pub enum Error {
     Hash(#[from] argon2::Error),
     #[error("Telemetry error: {0}")]
     Telemetry(#[from] tracing::dispatcher::SetGlobalDefaultError),
-    #[error("Parse error: {0}")]
-    Parse(#[from] ParseIntError),
+    #[error("Int parse error: {0}")]
+    ParseInt(#[from] ParseIntError),
+    #[error("Address parse error: {0}")]
+    ParseAddr(#[from] std::net::AddrParseError),
     #[error("Reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
 }

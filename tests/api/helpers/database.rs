@@ -15,11 +15,22 @@ RETURNING id
     .unwrap()
     .id;
 
+    // New template.
+    sqlx::query!(
+        r#"
+INSERT INTO templates (os_name, template_vmid, template_node, virtual_type)
+VALUES ('ubuntu-22.04', 9000, 'pve', 'qemu')
+		"#,
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
     // New test product.
     let product_id = sqlx::query!(
         r#"
-INSERT INTO products (group_id, name, virtual_type, template_id, template_node)
-VALUES ($1, 'Test Product', 'qemu', 100, 'pve')
+INSERT INTO products (group_id, name)
+VALUES ($1, 'Test Product')
 RETURNING id
 			"#,
         group_id
@@ -45,8 +56,8 @@ RETURNING id
     // New IP address.
     sqlx::query!(
         r#"
-insert into ip_addresses (ip_address, network_id)
-values ('192.168.0.100', $1)
+INSERT INTO ip_addresses (ip_address, network_id)
+VALUES ('192.168.0.100', $1)
             "#,
         network_id
     )

@@ -26,12 +26,16 @@ impl ProxmoxClient {
     /// * `url`: URL of the Proxmox API.
     /// * `auth_header`: The full, pre-formatted authorization header string.
     ///
-    pub fn new(url: String, auth_header: String) -> Self {
-        Self {
-            client: Client::new(),
+    pub fn new(url: String, auth_header: String) -> Result<Self> {
+        let client = Client::builder()
+            .danger_accept_invalid_certs(true)
+            .build()?;
+
+        Ok(Self {
+            client,
             url,
             auth_header,
-        }
+        })
     }
 
     /// Helper method to execute a `POST` command that returns a task UPID.
@@ -133,8 +137,9 @@ impl Proxmox for ProxmoxClient {
         // Get next free VMID.
         let nextid_url = format!("{}/cluster/nextid", self.url);
         let new_id = self
-            .get_data::<i32>(&nextid_url, ProxmoxError::Create)
-            .await?;
+            .get_data::<String>(&nextid_url, ProxmoxError::Create)
+            .await?
+            .parse()?;
 
         // Create a copy of virtual machine/template.
         let url = format!(
@@ -243,7 +248,7 @@ mod tests {
 
     async fn setup() -> (MockServer, ProxmoxClient) {
         let mock_server = MockServer::start().await;
-        let client = ProxmoxClient::new(mock_server.uri(), "PVEAPIToken=".into());
+        let client = ProxmoxClient::new(mock_server.uri(), "PVEAPIToken=".into()).unwrap();
 
         (mock_server, client)
     }
@@ -428,7 +433,7 @@ mod tests {
     async fn clone_vm_success() {
         // Arrange
         let (mock_server, client) = setup().await;
-        let response_vmid_json = json!({"data": 101});
+        let response_vmid_json = json!({"data": "101"});
         let response_upid_json = json!({"data": FAKE_UPID});
         Mock::given(method("GET"))
             .and(path("/cluster/nextid"))
@@ -454,7 +459,7 @@ mod tests {
     async fn clone_vm_failure_second() {
         // Arrange
         let (mock_server, client) = setup().await;
-        let response_vmid_json = json!({"data": 101});
+        let response_vmid_json = json!({"data": "101"});
         Mock::given(method("GET"))
             .and(path("/cluster/nextid"))
             .respond_with(ResponseTemplate::new(200).set_body_json(response_vmid_json))

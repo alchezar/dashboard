@@ -30,6 +30,6 @@ pub fn new_server(product_id: Uuid) -> Value {
         "cpu_cores": 2,
         "ram_gb": 2,
         "os": "ubuntu-22.04",
-        "data_center": "Amsterdam"
+        "datacenter": "Amsterdam"
     })
 }

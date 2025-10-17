@@ -70,7 +70,7 @@ async fn start_action(
         ServerAction::Shutdown => (ServerStatus::ShuttingDown, ServerStatus::Stopped),
         ServerAction::Reboot => (ServerStatus::Rebooting, ServerStatus::Running),
     };
-    queries::update_server_status(&mut **transaction, server_id, transient_status.clone()).await?;
+    queries::update_server_status(&mut **transaction, server_id, transient_status).await?;
     tracing::debug!(target: "service", status = ?transient_status, "Server status updated to transient state");
 
     // Start the action and update the status again once it's done.

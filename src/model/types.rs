@@ -1,7 +1,9 @@
+use crate::prelude::Result;
 use chrono::{DateTime, Utc};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use std::net::Ipv4Addr;
 use uuid::Uuid;
 
 /// Represents a user row in the database, including the password hash.
@@ -167,4 +169,26 @@ pub struct ApiServer {
     pub node_name: Option<String>,
     pub ip_address: String,
     pub status: ServerStatus,
+}
+
+#[derive(Debug)]
+pub struct IpConfig {
+    pub ip_address: String,
+    pub gateway: String,
+    pub subnet_mask: String,
+}
+
+impl IpConfig {
+    pub fn form(self) -> Result<String> {
+        // Convert IPv4 mask into CIDR, for example:
+        // 255.255.255.0 -> 11111111.11111111.11111111.00000000 -> /24
+        let mask = self.subnet_mask.parse::<Ipv4Addr>()?;
+        let mask_u32 = u32::from(mask);
+        let cidr_prefix = mask_u32.leading_ones();
+
+        Ok(format!(
+            "ip={}/{},gw={}",
+            self.ip_address, cidr_prefix, self.gateway
+        ))
+    }
 }

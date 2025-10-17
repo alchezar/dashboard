@@ -9,17 +9,17 @@ pub struct Claims {
 }
 
 pub mod password {
-    use crate::error::{AuthError, Error};
+    use crate::error::{AuthError, Error, Result};
     use rand::Rng;
 
-    pub fn verify(hash: &str, password: &str) -> crate::error::Result<()> {
+    pub fn verify(hash: &str, password: &str) -> Result<()> {
         match argon2::verify_encoded(hash, password.as_bytes())? {
             true => Ok(()),
             false => Err(Error::Auth(AuthError::WrongPassword)),
         }
     }
 
-    pub fn hash(password: &str) -> crate::error::Result<String> {
+    pub fn hash(password: &str) -> Result<String> {
         let salt = rand::rng().random::<[u8; 16]>();
         argon2::hash_encoded(password.as_bytes(), &salt, &argon2::Config::default())
             .map_err(Error::Hash)
@@ -28,13 +28,13 @@ pub mod password {
 
 pub mod token {
     use crate::config::CONFIG;
-    use crate::error::{AuthError, Error};
+    use crate::error::{AuthError, Error, Result};
     use crate::web::auth::Claims;
     use chrono::{Duration, Utc};
     use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
     use uuid::Uuid;
 
-    pub fn create(user_id: Uuid) -> crate::error::Result<String> {
+    pub fn create(user_id: Uuid) -> Result<String> {
         let now = Utc::now();
         let expires_in = Duration::seconds(CONFIG.token_duration_sec as i64);
         let exp = (now + expires_in).timestamp() as usize;
@@ -52,7 +52,7 @@ pub mod token {
         Ok(token)
     }
 
-    pub fn validate(token: &str) -> crate::error::Result<Claims> {
+    pub fn validate(token: &str) -> Result<Claims> {
         let decoding_key = DecodingKey::from_secret(CONFIG.token_secret.as_bytes());
         let validation = Validation::default();
 

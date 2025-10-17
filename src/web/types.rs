@@ -40,7 +40,8 @@ pub struct NewServerPayload {
     pub cpu_cores: Option<i32>,
     pub ram_gb: Option<i32>,
     pub os: String,
-    pub data_center: String,
+    pub datacenter: String,
+    pub ip_config: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -53,6 +54,8 @@ pub struct ServerActionPayload {
 pub enum ServerAction {
     Start,
     Stop,
+    // Shutting VM down, and starting it again.
     Reboot,
+    // This is similar to pressing the power button on a physical machine.
     Shutdown,
 }

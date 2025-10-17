@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
         proxmox: Arc::new(ProxmoxClient::new(
             CONFIG.proxmox_url.clone(),
             CONFIG.proxmox_auth_header.clone(),
-        )),
+        )?),
     };
     let address = CONFIG.get_address()?;
     let app = App::build(app_state, address).await?;
