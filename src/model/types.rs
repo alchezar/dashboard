@@ -110,6 +110,8 @@ impl From<String> for ServiceStatus {
     }
 }
 
+/// Represents the status from the `servers` table.
+///
 #[derive(Debug, Clone, Copy, PartialEq, Display, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ServerStatus {
@@ -153,10 +155,10 @@ impl From<String> for ServerStatus {
 ///
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Server {
-    id: Uuid,
-    vm_id: Option<i32>,
-    node_name: Option<String>,
-    host_name: String,
+    pub id: Uuid,
+    pub vm_id: Option<i32>,
+    pub node_name: Option<String>,
+    pub host_name: String,
 }
 
 /// Combined struct for the public API response.
@@ -171,6 +173,8 @@ pub struct ApiServer {
     pub status: ServerStatus,
 }
 
+/// Configuration for an IP address.
+///
 #[derive(Debug)]
 pub struct IpConfig {
     pub ip_address: String,
@@ -179,6 +183,12 @@ pub struct IpConfig {
 }
 
 impl IpConfig {
+    /// Formats the IP configuration into a string suitable for Proxmox.
+    ///
+    /// # Returns
+    ///
+    /// A formatted string, e.g., "ip=192.168.1.100/24,gw=192.168.1.1".
+    ///
     pub fn form(self) -> Result<String> {
         // Convert IPv4 mask into CIDR, for example:
         // 255.255.255.0 -> 11111111.11111111.11111111.00000000 -> /24

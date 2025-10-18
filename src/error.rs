@@ -5,6 +5,8 @@ use thiserror::Error;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
+/// Defines the application's custom error types.
+///
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Error: {0}")]
@@ -50,25 +52,35 @@ impl IntoResponse for Error {
     fn into_response(self) -> Response {
         use axum::http::StatusCode;
 
-        let status = match self {
-            Error::Auth(_) => StatusCode::UNAUTHORIZED,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        };
-        let error = self.to_string();
-
-        (status, error).into_response()
+        match self {
+            Error::Auth(AuthError::Token) => (
+                StatusCode::UNAUTHORIZED,
+                "Authorization token is missing or invalid!".to_owned(),
+            ),
+            Error::Auth(AuthError::Login) => (
+                StatusCode::UNAUTHORIZED,
+                "Incorrect email or password!".to_owned(),
+            ),
+            Error::Hash(_) => (
+                StatusCode::UNAUTHORIZED,
+                "Incorrect email or password!".to_owned(),
+            ),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+        }
+        .into_response()
     }
 }
 
+/// Represents authentication-related errors.
+///
 #[derive(Debug, Display)]
 pub enum AuthError {
-    TokenCreation,
-    TokenInvalid,
-    TokenNotFound,
-    WrongEmail,
-    WrongPassword,
+    Token,
+    Login,
 }
 
+/// Represents errors related to Proxmox API operations.
+///
 #[derive(Debug, Display)]
 pub enum ProxmoxError {
     Start,

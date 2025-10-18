@@ -37,7 +37,7 @@ pub fn routes() -> Router<AppState> {
 /// curl --location 'http://127.0.0.1:8080/register' --header 'Content-Type: application/json' --data '{ "first_name": "John", "last_name": "Doe", "email": "john.doe@example.com", "password": "secure_password_123", "address": "123 Main St", "city": "Anytown", "state": "Any-state", "post_code": "12345", "country": "USA", "phone_number": "555-1234" }'
 /// ```
 ///
-#[tracing::instrument(level = "trace", target = "-- handler",
+#[tracing::instrument(level = "trace", target = "handler",
 	skip(app_state, new_user),
 	fields(email = %new_user.email))]
 async fn register(
@@ -46,7 +46,7 @@ async fn register(
 ) -> Result<Json<TokenResponse>> {
     let user = queries::add_new_user(&app_state.pool, new_user).await?;
     let token = token::create(user.id)?;
-    tracing::info!(target: ">> handler", "Token generated successfully for user_id={:?}", user.id);
+    tracing::info!(target: "handler", "Token generated successfully for user_id={:?}", user.id);
 
     Ok(Json(TokenResponse::new(token.into())))
 }
@@ -77,7 +77,7 @@ async fn register(
 /// curl --location 'http://127.0.0.1:8080/login' --header 'Content-Type: application/json' --data '{ "email": "john.doe@example.com", "password": "secure_password_123" }'
 /// ```
 ///
-#[tracing::instrument(level = "trace", target = "-- handler",
+#[tracing::instrument(level = "trace", target = "handler",
 	skip(app_state, payload),
 	fields(email = %payload.email))]
 async fn login(
@@ -86,10 +86,10 @@ async fn login(
 ) -> Result<Json<TokenResponse>> {
     let user = queries::get_user_by_email(&app_state.pool, &payload.email)
         .await
-        .map_err(|_| Error::Auth(AuthError::WrongEmail))?;
+        .map_err(|_| Error::Auth(AuthError::Login))?;
     password::verify(&user.password, &payload.password)?;
     let token = token::create(user.id)?;
-    tracing::info!(target: ">> handler", "Token generated successfully for user_id={:?}", user.id);
+    tracing::info!(target: "handler", "Token generated successfully for user_id={:?}", user.id);
 
     Ok(Json(TokenResponse::new(token.into())))
 }

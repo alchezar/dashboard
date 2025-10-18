@@ -13,19 +13,19 @@ async fn main() -> Result<()> {
     // Initialize logging.
     let subscriber = telemetry::get_subscriber(Level::TRACE, std::io::stdout);
     telemetry::init_subscriber(subscriber)?;
-    tracing::info!(target: ">> server", "Start!");
-    tracing::info!(target: ">> server", "Logger ready.");
+    tracing::info!(target: "server", "Start!");
+    tracing::info!(target: "server", "Logger ready.");
 
     let app_state = AppState {
         pool: dashboard::model::queries::connect_to_db().await?,
         proxmox: Arc::new(ProxmoxClient::new(
-            CONFIG.proxmox_url.clone(),
-            CONFIG.proxmox_auth_header.clone(),
+            CONFIG.proxmox.url.clone(),
+            CONFIG.proxmox.auth_header.clone(),
         )?),
     };
     let address = CONFIG.get_address()?;
     let app = App::build(app_state, address).await?;
-    tracing::info!(target: ">> server", "Listening on '{}'\n", app.get_url()?);
+    tracing::info!(target: "server", "Listening on '{}'\n", app.get_url()?);
 
     app.run().await
 }

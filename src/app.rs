@@ -1,6 +1,6 @@
 ﻿use crate::prelude::{AppState, Result};
+use crate::web::middleware as mw;
 use crate::web::{routes_login, routes_server};
-use axum::response::Response;
 use axum::serve::Serve;
 use axum::{Router, middleware};
 use std::net::SocketAddr;
@@ -32,7 +32,7 @@ impl App {
             .merge(routes_login::routes())
             .merge(routes_server::routes())
             .with_state(app_state)
-            .layer(middleware::map_response(main_response_mapper))
+            .layer(middleware::map_response(mw::log_mapper))
             .layer(CorsLayer::new().allow_origin(Any));
 
         Ok(Self {
@@ -54,15 +54,4 @@ impl App {
     pub fn get_url(&self) -> Result<String> {
         Ok(format!("http://{}", self.server.local_addr()?))
     }
-}
-
-/// A middleware to print a blank line after each response.
-///
-/// This serves as a simple visual separator between requests in the development
-/// console logs.
-async fn main_response_mapper(res: Response) -> Response {
-    #[cfg(debug_assertions)]
-    println!();
-
-    res
 }

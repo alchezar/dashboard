@@ -1,12 +1,10 @@
 //! Protected routes
 
 use crate::model::queries;
-use crate::model::types::ApiServer;
-use crate::prelude::AppState;
-use crate::prelude::Result;
+use crate::prelude::{ApiServer, AppState, Result};
 use crate::services::{action, deletion, setup};
 use crate::web::auth::Claims;
-use crate::web::mw_auth;
+use crate::web::middleware as mw;
 use crate::web::types::{NewServerPayload, Response, ServerActionPayload, UserResponse};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -21,7 +19,7 @@ pub fn routes() -> Router<AppState> {
         .route("/servers", get(list_servers).post(create_server))
         .route("/servers/{id}", get(get_server).delete(delete_server))
         .route("/servers/{id}/actions", post(server_action))
-        .route_layer(middleware::from_fn(mw_auth::mw_require_auth))
+        .route_layer(middleware::from_fn(mw::require_auth))
 }
 
 /// Returns the profile of the currently authenticated user.
@@ -52,7 +50,7 @@ pub fn routes() -> Router<AppState> {
 /// curl --location 'http://127.0.0.1:8080/user/me' --header 'Authorization: Bearer <TOKEN>'
 /// ```
 ///
-#[tracing::instrument(level = "trace", target = "-- handler",
+#[tracing::instrument(level = "trace", target = "handler",
 	skip(app_state, claims),
 	fields(id = %claims.user_id))]
 async fn get_user(
@@ -60,7 +58,7 @@ async fn get_user(
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<UserResponse>> {
     let user = queries::get_user_by_id(&app_state.pool, claims.user_id).await?;
-    tracing::info!(target: ">> handler", "Found user: email={}", user.email);
+    tracing::info!(target: "handler", "Found user: email={}", user.email);
 
     Ok(Json(Response::new(user)))
 }
@@ -84,7 +82,7 @@ async fn get_user(
 /// Returns an [`Error`] if a user with the ID from the JWT claims cannot be
 /// found.
 ///
-#[tracing::instrument(level = "trace", target = "-- handler",
+#[tracing::instrument(level = "trace", target = "handler",
 	skip(app_state, claims),
 	fields(id = %claims.user_id))]
 async fn list_servers(
@@ -92,7 +90,7 @@ async fn list_servers(
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<Response<Vec<ApiServer>>>> {
     let servers = queries::get_servers_for_user(&app_state.pool, claims.user_id).await?;
-    tracing::info!(target: ">> handler", "Found {} servers", servers.len());
+    tracing::info!(target: "handler", "Found {} servers", servers.len());
 
     Ok(Json(Response::new(servers)))
 }
@@ -141,7 +139,7 @@ async fn get_server(
     Path(server_id): Path<Uuid>,
 ) -> Result<Json<Response<ApiServer>>> {
     let server = queries::get_server_by_id(&app_state.pool, claims.user_id, server_id).await?;
-    tracing::info!(target: ">> handler", server_id = ?server.server_id, "Server found");
+    tracing::info!(target: "handler", server_id = ?server.server_id, "Server found");
 
     Ok(Json(Response::new(server)))
 }

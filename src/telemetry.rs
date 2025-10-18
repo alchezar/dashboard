@@ -19,9 +19,9 @@ use tracing_subscriber::{EnvFilter, fmt::MakeWriter};
 ///
 /// `Subscriber` instance.
 ///
-pub fn get_subscriber<Sink>(max_level: Level, sink: Sink) -> impl Subscriber + Sync + Send
+pub fn get_subscriber<W>(max_level: Level, writer: W) -> impl Subscriber + Sync + Send
 where
-    Sink: for<'a> MakeWriter<'a> + Sync + Send + 'static,
+    W: for<'a> MakeWriter<'a> + Sync + Send + 'static,
 {
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_error| EnvFilter::new(max_level.as_str()));
@@ -41,7 +41,7 @@ where
         .with_thread_ids(true)
         .with_target(true)
         .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
-        .with_writer(sink)
+        .with_writer(writer)
         .finish()
 }
 
@@ -55,7 +55,10 @@ where
 ///
 /// * `subscriber`: Subscriber to set as the global default for the application.
 ///
-pub fn init_subscriber(subscriber: impl Subscriber + Sync + Send) -> Result<()> {
+pub fn init_subscriber<S>(subscriber: S) -> Result<()>
+where
+    S: Subscriber + Sync + Send,
+{
     // Old loggers support.
     LogTracer::init()?;
 

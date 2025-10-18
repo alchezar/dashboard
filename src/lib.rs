@@ -10,8 +10,10 @@ pub mod web;
 
 pub mod prelude {
     pub use crate::error::{AuthError, Error, Result};
+    pub use crate::model::types::{ApiServer, ServerStatus, ServiceStatus};
     pub use crate::state::AppState;
 
     pub use crate::error::ProxmoxError;
     pub use crate::proxmox::Proxmox;
+    pub use crate::proxmox::types::{TaskRef, VmRef};
 }

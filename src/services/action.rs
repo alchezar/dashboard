@@ -1,7 +1,5 @@
 ﻿use crate::model::queries;
-use crate::model::types::ServerStatus;
-use crate::prelude::{AppState, Proxmox, Result};
-use crate::proxmox::types::TaskRef;
+use crate::prelude::{AppState, Proxmox, Result, ServerStatus, TaskRef};
 use crate::services;
 use crate::web::types::ServerAction;
 use sqlx::PgTransaction;

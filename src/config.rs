@@ -13,13 +13,10 @@ pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
 ///
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub password_secret: String,
-    pub token_secret: String,
-    pub token_duration_sec: u64,
-    pub proxmox_url: String,
-    pub proxmox_auth_header: String,
     application: Application,
     database: Database,
+    pub token: TokenEnv,
+    pub proxmox: ProxmoxEnv,
 }
 
 impl Config {
@@ -27,7 +24,7 @@ impl Config {
     ///
     pub fn from_env() -> Result<Self> {
         dotenv::dotenv()?;
-        tracing::info!(target: ">> config", ".env loaded.");
+        tracing::info!(target: "config", ".env loaded.");
 
         let config_dif = std::env::current_dir()?.join("configuration");
         let env_filename = (*std::env::var("APP_ENVIRONMENT")?)
@@ -38,12 +35,12 @@ impl Config {
         let config = config::Config::builder()
             .add_source(config::File::from(config_dif.join("base.yaml")))
             .add_source(config::File::from(config_dif.join(env_filename)))
-            .add_source(config::Environment::default())
+            .add_source(config::Environment::with_prefix("APP").separator("__"))
             .build()?
             .try_deserialize::<Config>()?;
 
         tracing::info!(
-            target: ">> config",
+            target: "config",
             application = ?config.application,
             database = ?config.database,
             "Configuration loaded.");
@@ -107,6 +104,24 @@ impl Database {
             self.username, self.password, self.host, self.port, self.database_name
         )
     }
+}
+
+// -----------------------------------------------------------------------------
+
+/// All settings required to work with JWT.
+///
+#[derive(Debug, Deserialize)]
+pub struct TokenEnv {
+    pub secret: String,
+    pub duration_sec: u64,
+}
+
+/// All settings required to work with Proxmox.
+///
+#[derive(Debug, Clone, Deserialize)]
+pub struct ProxmoxEnv {
+    pub url: String,
+    pub auth_header: String,
 }
 
 // -----------------------------------------------------------------------------

@@ -15,7 +15,7 @@ pub mod password {
     pub fn verify(hash: &str, password: &str) -> Result<()> {
         match argon2::verify_encoded(hash, password.as_bytes())? {
             true => Ok(()),
-            false => Err(Error::Auth(AuthError::WrongPassword)),
+            false => Err(Error::Auth(AuthError::Login)),
         }
     }
 
@@ -36,7 +36,7 @@ pub mod token {
 
     pub fn create(user_id: Uuid) -> Result<String> {
         let now = Utc::now();
-        let expires_in = Duration::seconds(CONFIG.token_duration_sec as i64);
+        let expires_in = Duration::seconds(CONFIG.token.duration_sec as i64);
         let exp = (now + expires_in).timestamp() as usize;
         let iat = now.timestamp() as usize;
         let claims = Claims { exp, iat, user_id };
@@ -45,19 +45,19 @@ pub mod token {
         let token = encode(
             &header,
             &claims,
-            &EncodingKey::from_secret(CONFIG.token_secret.as_bytes()),
+            &EncodingKey::from_secret(CONFIG.token.secret.as_bytes()),
         )
-        .map_err(|_| Error::Auth(AuthError::TokenCreation))?;
+        .map_err(|_| Error::Auth(AuthError::Token))?;
 
         Ok(token)
     }
 
     pub fn validate(token: &str) -> Result<Claims> {
-        let decoding_key = DecodingKey::from_secret(CONFIG.token_secret.as_bytes());
+        let decoding_key = DecodingKey::from_secret(CONFIG.token.secret.as_bytes());
         let validation = Validation::default();
 
         decode::<Claims>(token, &decoding_key, &validation)
             .map(|data| data.claims)
-            .map_err(|_| Error::Auth(AuthError::TokenInvalid))
+            .map_err(|_| Error::Auth(AuthError::Token))
     }
 }
