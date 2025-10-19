@@ -16,6 +16,7 @@ async-trait = "0.1"
 axum = "0.8"
 bcrypt = "0.17"
 chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.5", features = ["derive", "env"] }
 config = "0.15"
 derive_more = { version = "2.0", features = ["display"] }
 dotenv = "0.15"
@@ -43,6 +44,7 @@ features = [
 	"macros",
 	"migrate",
 	"postgres",
+	"mysql",
 	"runtime-tokio-rustls",
 	"chrono",
 	"uuid",

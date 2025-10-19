@@ -21,6 +21,33 @@ pub async fn connect_to_db() -> Result<PgPool> {
     Ok(pool)
 }
 
+/// Updates a user's password hash in the database.
+///
+/// # Arguments
+///
+/// * `pool`: Reference to the `PgPool`.
+/// * `user_id`: UUID of the user whose password should be updated.
+/// * `new_hash`: New, hashed password to be stored in the database.
+///
+/// # Returns
+///
+/// Empty `Ok(())` on success.
+///
+pub async fn update_password(pool: &PgPool, user_id: &Uuid, new_hash: &str) -> Result<()> {
+    sqlx::query!(
+        r#"
+UPDATE users SET password = $2
+WHERE id = $1
+		"#,
+        user_id,
+        new_hash
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
 /// Inserts a new user into the database.
 ///
 /// # Arguments
@@ -48,7 +75,20 @@ INSERT INTO users (
     phone_number,
     password)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING *
+RETURNING
+    id,
+    first_name,
+    last_name,
+    email,
+    address,
+    city,
+    state,
+    post_code,
+    country,
+    phone_number,
+    password,
+    created_at,
+    updated_at
 		"#,
         new_user.first_name,
         new_user.last_name,
@@ -81,7 +121,21 @@ pub async fn get_user_by_id(pool: &PgPool, user_id: Uuid) -> Result<ApiUser> {
     Ok(sqlx::query_as!(
         DbUser,
         r#"
-SELECT * FROM users
+SELECT
+    id,
+    first_name,
+    last_name,
+    email,
+    address,
+    city,
+    state,
+    post_code,
+    country,
+    phone_number,
+    password,
+    created_at,
+    updated_at
+FROM users
 WHERE id = $1
         "#,
         user_id
@@ -106,7 +160,21 @@ pub async fn get_user_by_email(pool: &PgPool, email: &str) -> Result<DbUser> {
     Ok(sqlx::query_as!(
         DbUser,
         r#"
-SELECT * FROM users
+SELECT
+    id,
+    first_name,
+    last_name,
+    email,
+    address,
+    city,
+    state,
+    post_code,
+    country,
+    phone_number,
+    password,
+    created_at,
+    updated_at
+FROM users
 WHERE email = $1
         "#,
         email
@@ -659,6 +727,19 @@ mod tests {
     use super::*;
     use crate::model::types::Server;
     use crate::web::types::NewServerPayload;
+
+    #[sqlx::test]
+    async fn update_password_should_works(pool: PgPool) {
+        // Arrange
+        let user = add_new_user(&pool, payload::test_user()).await.unwrap();
+        let new_password = "new_secure_password";
+        let new_hash = bcrypt::hash(&new_password, 10).unwrap();
+        // Act
+        update_password(&pool, &user.id, &new_hash).await.unwrap();
+        // Assert
+        let new_user = get_user_by_email(&pool, &user.email).await.unwrap();
+        assert!(bcrypt::verify(&new_password, &new_user.password).is_ok());
+    }
 
     #[sqlx::test]
     async fn add_new_user_should_works(pool: PgPool) {

@@ -46,7 +46,7 @@ async fn register(
 ) -> Result<Json<TokenResponse>> {
     let user = queries::add_new_user(&app_state.pool, new_user).await?;
     let token = token::create(user.id)?;
-    tracing::info!(target: "handler", "Token generated successfully for user_id={:?}", user.id);
+    tracing::info!(target: "handler", user_id = %user.id, "Token generated successfully");
 
     Ok(Json(TokenResponse::new(token.into())))
 }
@@ -87,9 +87,20 @@ async fn login(
     let user = queries::get_user_by_email(&app_state.pool, &payload.email)
         .await
         .map_err(|_| Error::Auth(AuthError::Login))?;
-    password::verify(&user.password, &payload.password)?;
+
+    let (hash, pass) = (&user.password, &payload.password);
+    if hash.starts_with("$2y$10$") {
+        // Rehash old WHMCS passwords immediately, without confirmation email.
+        bcrypt::verify(pass, hash).map_err(|_| Error::Auth(AuthError::Login))?;
+        let new_hash = password::hash(pass)?;
+        queries::update_password(&app_state.pool, &user.id, &new_hash).await?;
+        tracing::info!(target: "handler", user_id = %user.id, "Old password hash updated");
+    } else {
+        password::verify(hash, pass)?;
+    }
+
     let token = token::create(user.id)?;
-    tracing::info!(target: "handler", "Token generated successfully for user_id={:?}", user.id);
+    tracing::info!(target: "handler", user_id = %user.id, "Token generated successfully");
 
     Ok(Json(TokenResponse::new(token.into())))
 }
