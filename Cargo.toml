@@ -35,6 +35,7 @@ tracing-log = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 uuid = { version = "1.18", features = ["v4", "serde"] }
 wiremock = "0.6"
+futures = "0.3"
 
 [dependencies.sqlx]
 version = "0.8"

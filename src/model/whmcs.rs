@@ -1,4 +1,44 @@
-﻿/// Represents all necessary fields from the client row in the `MySQL` database.
+﻿#[allow(unused)]
+#[derive(Hash, PartialEq, Eq)]
+pub enum DashboardTable {
+    Users,
+    ProductGroups,
+    Products,
+    CustomFields,
+    ConfigOptions,
+    Servers,
+    Network,
+    IpAddresses,
+    Services,
+    CustomValues,
+    ConfigValues,
+}
+
+impl std::fmt::Display for DashboardTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            DashboardTable::Users => "users",
+            DashboardTable::ProductGroups => "product_groups",
+            DashboardTable::Products => "products",
+            DashboardTable::CustomFields => "custom_fields",
+            DashboardTable::ConfigOptions => "config_options",
+            DashboardTable::Servers => "servers",
+            DashboardTable::Network => "network",
+            DashboardTable::IpAddresses => "ip_addresses",
+            DashboardTable::Services => "services",
+            DashboardTable::CustomValues => "custom_values",
+            DashboardTable::ConfigValues => "config_values",
+        })
+    }
+}
+
+impl std::fmt::Debug for DashboardTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+/// Represents all necessary fields from the client row in the `MySQL` database.
 ///
 #[derive(Debug, sqlx::FromRow)]
 pub struct Client {
