@@ -3,7 +3,8 @@ CREATE TABLE products
 (
     id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id UUID NOT NULL REFERENCES product_groups (id),
-    name     TEXT NOT NULL
+    name     TEXT NOT NULL,
+    whmcs_id INT UNIQUE
 );
 
 -- Create custom templates table
@@ -21,5 +22,6 @@ CREATE TABLE custom_fields
 (
     id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID NOT NULL REFERENCES products (id),
-    name       TEXT NOT NULL
+    name       TEXT NOT NULL,
+    whmcs_id   INT UNIQUE
 );

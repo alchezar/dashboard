@@ -283,7 +283,7 @@ SELECT
 	n.gateway,
 	n.subnet_mask
 FROM ip_addresses AS ip
-JOIN network AS n ON ip.network_id = n.id
+JOIN networks AS n ON ip.network_id = n.id
 WHERE ip.server_id IS NULL AND n.datacenter_name = $1
 LIMIT 1
 FOR UPDATE SKIP LOCKED

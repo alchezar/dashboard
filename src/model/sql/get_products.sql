@@ -2,4 +2,5 @@ SELECT id,
        gid,
        name
 FROM tblproducts
-WHERE hidden = 0;
+WHERE hidden = 0
+;

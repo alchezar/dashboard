@@ -16,7 +16,8 @@ CREATE TABLE users
     phone_number TEXT NOT NULL,
     password     TEXT NOT NULL,
     created_at   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    whmcs_id     INT UNIQUE
 );
 
 -- Create index on email for faster lookups

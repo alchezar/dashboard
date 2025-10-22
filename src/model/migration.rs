@@ -31,7 +31,7 @@ impl Migration {
     pub async fn new(cli: &Cli) -> Result<Self> {
         let source_pool = MySqlPoolOptions::new().connect(&cli.source_url).await?;
         let target_pool = PgPoolOptions::new().connect(&cli.target_url).await?;
-        tracing::info!("Database pools created.");
+        tracing::info!(?cli.source_url, ?cli.target_url, "Database pools created.");
 
         Ok(Self {
             source_pool,
@@ -53,9 +53,9 @@ impl Migration {
         self.migrate_custom_fields(&mut transaction).await?;
         self.migrate_config_options(&mut transaction).await?;
         // Servers
-        self.migrate_servers().await?;
-        self.migrate_network().await?;
-        self.migrate_ip_addresses().await?;
+        self.migrate_servers(&mut transaction).await?;
+        self.migrate_networks(&mut transaction).await?;
+        self.migrate_ip_addresses(&mut transaction).await?;
         self.migrate_templates().await?;
         // Services
         self.migrate_services().await?;
@@ -147,8 +147,10 @@ impl Migration {
 
         while let Some(Ok(chunk)) = chunks.next().await {
             tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS products.");
-            let group_id_map = self.get_existing_ids(DashboardTable::ProductGroups).await?;
-            total_affected += insert_products(tx, chunk, group_id_map).await?;
+            let groups_map = self
+                .get_existing_ids(tx, DashboardTable::ProductGroups)
+                .await?;
+            total_affected += insert_products(tx, chunk, groups_map).await?;
         }
         drop(chunks);
 
@@ -177,8 +179,8 @@ impl Migration {
 
         while let Some(Ok(chunk)) = chunks.next().await {
             tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS custom fields.");
-            let product_id_map = self.get_existing_ids(DashboardTable::Products).await?;
-            total_affected += insert_custom_fields(tx, chunk, &product_id_map).await?;
+            let products_map = self.get_existing_ids(tx, DashboardTable::Products).await?;
+            total_affected += insert_custom_fields(tx, chunk, &products_map).await?;
         }
         drop(chunks);
 
@@ -216,19 +218,95 @@ impl Migration {
         Ok(())
     }
 
-    async fn migrate_servers(&mut self) -> Result<()> {
+    /// Migrates servers from the WHMCS `mod_pvewhmcs_wms` to the `servers`
+    /// table.
+    ///
+    /// # Arguments
+    ///
+    /// * `tx`: In-progress transaction for target database.
+    ///
+    /// # Returns
+    ///
+    /// Empty `Ok(())` on success.
+    ///
+    async fn migrate_servers(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
+        let query = include_str!("sql/get_servers.sql");
+        let mut chunks = sqlx::query_as::<_, whmcs::VmRecord>(query)
+            .fetch(&self.source_pool)
+            .try_chunks(CHUNK_SIZE);
+        let mut total_affected = 0;
+
+        while let Some(Ok(chunk)) = chunks.next().await {
+            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS servers.");
+            total_affected += insert_servers(tx, chunk).await?;
+        }
+        drop(chunks);
+
+        self.collect_statistics(total_affected, DashboardTable::Servers);
         tracing::debug!("Servers migration completed.");
         Ok(())
     }
 
-    async fn migrate_network(&mut self) -> Result<()> {
-        tracing::debug!("Network migration completed.");
+    /// Migrates networks from the WHMCS `mod_pvewhmcs_ip_pools` to the
+    /// `networks` table.
+    ///
+    /// # Arguments
+    ///
+    /// * `tx`: In-progress transaction for target database.
+    ///
+    /// # Returns
+    ///
+    /// Empty `Ok(())` on success.
+    ///
+    async fn migrate_networks(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
+        let query = include_str!("sql/get_networks.sql");
+        let mut chunks = sqlx::query_as::<_, whmcs::Network>(query)
+            .fetch(&self.source_pool)
+            .try_chunks(CHUNK_SIZE);
+        let mut total_affected = 0;
+
+        while let Some(Ok(chunk)) = chunks.next().await {
+            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS network.");
+            total_affected += insert_networks(tx, chunk).await?;
+        }
+        drop(chunks);
+
+        self.collect_statistics(total_affected, DashboardTable::Networks);
+        tracing::debug!("Networks migration completed.");
         Ok(())
     }
-    async fn migrate_ip_addresses(&mut self) -> Result<()> {
+
+    /// Migrates ip addresses from the WHMCS `mod_pvewhmcs_ip_addresses` to the
+    /// `networks` table.
+    ///
+    /// # Arguments
+    ///
+    /// * `tx`: In-progress transaction for target database.
+    ///
+    /// # Returns
+    ///
+    /// Empty `Ok(())` on success.
+    ///
+    async fn migrate_ip_addresses(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
+        let query = include_str!("sql/get_ip_addresses.sql");
+        let mut chunks = sqlx::query_as::<_, whmcs::IpAddress>(query)
+            .fetch(&self.source_pool)
+            .try_chunks(CHUNK_SIZE);
+        let mut total_affected = 0;
+
+        while let Some(Ok(chunk)) = chunks.next().await {
+            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS networks.");
+            let servers_map = self.get_existing_ids(tx, DashboardTable::Servers).await?;
+            let networks_map = self.get_existing_ids(tx, DashboardTable::Networks).await?;
+            total_affected += insert_ip_addresses(tx, chunk, &servers_map, &networks_map).await?;
+        }
+        drop(chunks);
+
+        self.collect_statistics(total_affected, DashboardTable::IpAddresses);
         tracing::debug!("IP addresses migration completed.");
         Ok(())
     }
+
     async fn migrate_templates(&mut self) -> Result<()> {
         tracing::debug!("Templates migration completed.");
         Ok(())
@@ -262,7 +340,11 @@ impl Migration {
     ///
     /// `HashMap` of relationship between the WHMCS id and the Dashboard id.
     ///
-    async fn get_existing_ids(&self, table: DashboardTable) -> Result<HashMap<i32, Uuid>> {
+    async fn get_existing_ids(
+        &self,
+        tx: &mut PgTransaction<'_>,
+        table: DashboardTable,
+    ) -> Result<HashMap<i32, Uuid>> {
         let mut builder = sqlx::QueryBuilder::<sqlx::Postgres>::default();
         let query = builder
             .push("SELECT whmcs_id, id FROM ")
@@ -270,7 +352,7 @@ impl Migration {
             .push(" WHERE whmcs_id IS NOT NULL")
             .build();
         Ok(query
-            .fetch_all(&self.target_pool)
+            .fetch_all(tx.as_mut())
             .await?
             .into_iter()
             .filter_map(|row| {
@@ -535,5 +617,106 @@ async fn insert_config_options(
     Ok(unnest_insert!(
         options.into_iter() => config_options => tx,
         [(1, optionname, name, text), (2, id, whmcs_id, int4)]
+    )?)
+}
+
+/// Helper function to bulk insert servers into the target database.
+///
+/// # Arguments
+///
+/// * `tx`: In-progress transaction for target database.
+/// * `vm_records`: Vector of `whmcs::VmRecord` structs to be inserted.
+///
+/// # Returns
+///
+/// On success, the number of affected rows.
+///
+async fn insert_servers(
+    tx: &mut PgTransaction<'_>,
+    vm_records: Vec<whmcs::VmRecord>,
+) -> Result<u64> {
+    let servers = vm_records
+        .into_iter()
+        .map(|vm| vm.into())
+        .collect::<Vec<whmcs::Server>>();
+
+    Ok(unnest_insert!(
+        servers.into_iter() => servers => tx,
+        [
+            (1, vmid, vm_id, int8),
+            (2, node, node_name, text),
+            (3, hostname, host_name, text),
+            (4, status, status, text),
+            (5, id, whmcs_id, int4),
+        ]
+    )?)
+}
+
+/// Helper function to bulk insert networks into the target database.
+///
+/// # Arguments
+///
+/// * `tx`: In-progress transaction for target database.
+/// * `networks`: Vector of `whmcs::Network` structs to be inserted.
+///
+/// # Returns
+///
+/// On success, the number of affected rows.
+///
+async fn insert_networks(tx: &mut PgTransaction<'_>, networks: Vec<whmcs::Network>) -> Result<u64> {
+    Ok(unnest_insert!(
+        networks.into_iter() => networks => tx,
+        [
+            (1, title, datacenter_name, text),
+            (2, gateway, gateway, text),
+            (3, mask, subnet_mask, text),
+            (4, id, whmcs_id, int4),
+        ]
+    )?)
+}
+
+/// Helper function to bulk insert ip addresses into the target database.
+///
+/// # Arguments
+///
+/// * `tx`: In-progress transaction for target database.
+/// * `address`: Vector of `whmcs::IpAddress` structs to be inserted.
+///
+/// # Returns
+///
+/// On success, the number of affected rows.
+///
+async fn insert_ip_addresses(
+    tx: &mut PgTransaction<'_>,
+    address: Vec<whmcs::IpAddress>,
+    server_map: &HashMap<i32, Uuid>,
+    network_map: &HashMap<i32, Uuid>,
+) -> Result<u64> {
+    let addresses_iter = address
+        .into_iter()
+        .filter_map(|field| match network_map.get(&field.pool_id) {
+            Some(network_uuid) => Some((field.ipaddress, *network_uuid, field.server_id, field.id)),
+            _ => {
+                tracing::warn!(ip_address_id = ?field.id, network_id = ?field.pool_id,
+                    "Skipping ip address with non-migrated network." );
+                None
+            }
+        })
+        .map(|(ip_address, network_uuid, server_id, id)| {
+            let server_uuid = server_id
+                .and_then(|unsigned_id| Some(unsigned_id as i32))
+                .and_then(|id| server_map.get(&id))
+                .and_then(|uuid| Some(*uuid));
+            (ip_address, network_uuid, server_uuid, id)
+        });
+
+    Ok(unnest_insert!(
+        addresses_iter => ip_addresses => tx,
+        [
+            (1, 0, ip_address, text),
+            (2, 1, network_id, uuid),
+            (3, 2, server_id, uuid),
+            (4, 3, whmcs_id, int4),
+        ]
     )?)
 }
