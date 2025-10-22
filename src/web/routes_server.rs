@@ -39,17 +39,17 @@ pub fn routes() -> Router<AppState> {
 /// On success, returns a Json response with the user's public profile
 /// [`ApiUser`].
 ///
-/// # Errors
-///
-/// Returns an [`Error`] if a user with the ID from the JWT claims cannot be
-/// found.
-///
-/// # Examples
-///
-/// ```sh
-/// curl --location 'http://127.0.0.1:8080/user/me' --header 'Authorization: Bearer <TOKEN>'
-/// ```
-///
+#[utoipa::path(
+    get,
+    path = "/user/me",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, body = UserResponse, description = "User found"),
+        (status = 401, body = String, description = "Unauthorized"),
+        (status = 404, body = String, description = "User not found"),
+        (status = 500, body = String, description = "Internal server error")
+    )
+)]
 #[tracing::instrument(level = "trace", target = "handler",
 	skip(app_state, claims),
 	fields(id = %claims.user_id))]
@@ -65,6 +65,9 @@ async fn get_user(
 
 /// Returns the list of all servers that belong to currently authenticated user.
 ///
+/// This endpoint is protected, and the user is identified via the `user_id`
+/// claim from the JWT provided in the `Authorization` bearer token.
+///
 /// # Arguments
 ///
 /// * `State(app_state)`: The shared application state, containing the database
@@ -77,11 +80,17 @@ async fn get_user(
 /// On success, returns a Json response with the list of user's servers.
 /// [`ApiUser`].
 ///
-/// # Errors
-///
-/// Returns an [`Error`] if a user with the ID from the JWT claims cannot be
-/// found.
-///
+#[utoipa::path(
+    get,
+    path = "/servers",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, body = Response<Vec<ApiServer>>, description = "Servers found"),
+        (status = 401, body = String, description = "Unauthorized"),
+        (status = 404, body = String, description = "User not found"),
+        (status = 500, body = String, description = "Internal server error")
+    )
+)]
 #[tracing::instrument(level = "trace", target = "handler",
 	skip(app_state, claims),
 	fields(id = %claims.user_id))]
@@ -98,6 +107,9 @@ async fn list_servers(
 /// Accepts a request to create a new server and starts the process in the
 /// background.
 ///
+/// This endpoint is protected, and the user is identified via the `user_id`
+/// claim from the JWT provided in the `Authorization` bearer token.
+///
 /// # Arguments
 ///
 /// * `State(app_state)`: The shared application state, containing the database
@@ -110,6 +122,16 @@ async fn list_servers(
 ///
 /// This handler always returns an `HTTP 202 Accepted`
 ///
+#[utoipa::path(
+    post,
+    path = "/servers",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 202, description = "Server creation accepted"),
+        (status = 401, body = String, description = "Unauthorized"),
+        (status = 500, body = String, description = "Internal server error")
+    )
+)]
 async fn create_server(
     State(app_state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -122,6 +144,9 @@ async fn create_server(
 
 /// Retrieves and returns the details of a specific server.
 ///
+/// This endpoint is protected, and the user is identified via the `user_id`
+/// claim from the JWT provided in the `Authorization` bearer token.
+///
 /// # Arguments
 ///
 /// * `State(app_state)`: Shared application state.
@@ -133,6 +158,18 @@ async fn create_server(
 /// On success, returns a Json response with the user's server.
 /// [`ApiUser`].
 ///
+#[utoipa::path(
+    post,
+    path = "/servers/{id}",
+    security(("bearer_auth" = [])),
+    params(("id", Path, description = "Unique server ID")),
+    responses(
+        (status = 200, body = Response<ApiServer>, description = "Server found"),
+        (status = 401, body = String, description = "Unauthorized"),
+        (status = 404, body = String, description = "Server not found"),
+        (status = 500, body = String, description = "Internal server error")
+    )
+)]
 async fn get_server(
     State(app_state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -146,6 +183,9 @@ async fn get_server(
 
 /// Deletes a specific server and all associated data from the database
 ///
+/// This endpoint is protected, and the user is identified via the `user_id`
+/// claim from the JWT provided in the `Authorization` bearer token.
+///
 /// # Arguments
 ///
 /// * `State(app_state)`: Shared application state.
@@ -156,6 +196,17 @@ async fn get_server(
 ///
 /// This handler always returns an `HTTP 202 Accepted`
 ///
+#[utoipa::path(
+    delete,
+    path = "/servers/{id}",
+    security(("bearer_auth" = [])),
+    params(("id", Path, description = "Unique server ID")),
+    responses(
+        (status = 202, description = "Server action accepted"),
+        (status = 401, body = String, description = "Unauthorized"),
+        (status = 500, body = String, description = "Internal server error")
+    )
+)]
 async fn delete_server(
     State(app_state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -168,6 +219,9 @@ async fn delete_server(
 
 /// Makes specific action on the server.
 ///
+/// This endpoint is protected, and the user is identified via the `user_id`
+/// claim from the JWT provided in the `Authorization` bearer token.
+///
 /// # Arguments
 ///
 /// * `State(app_state)`: Shared application state.
@@ -179,6 +233,18 @@ async fn delete_server(
 ///
 /// This handler always returns an `HTTP 202 Accepted`
 ///
+#[utoipa::path(
+    delete,
+    path = "/servers/{id}/actions",
+    security(("bearer_auth" = [])),
+    params(("id", Path, description = "Unique server ID")),
+    request_body = ServerActionPayload,
+    responses(
+        (status = 202, description = "Server deleted"),
+        (status = 401, body = String, description = "Unauthorized"),
+        (status = 500, body = String, description = "Internal server error")
+    )
+)]
 async fn server_action(
     State(app_state): State<AppState>,
     Extension(claims): Extension<Claims>,

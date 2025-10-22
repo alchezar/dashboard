@@ -20,6 +20,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 config = "0.15"
 derive_more = { version = "2.0", features = ["display"] }
 dotenv = "0.15"
+futures = "0.3"
 jsonwebtoken = { version = "10.0", features = ["rust_crypto"] }
 percent-encoding = "2.3"
 rand = "0.9"
@@ -33,9 +34,10 @@ tower-http = { version = "0.6", features = ["cors"] }
 tracing = "0.1"
 tracing-log = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+utoipa = { version = "5.4", features = ["axum_extras", "uuid"] }
+utoipa-swagger-ui = { version = "9.0", features = ["axum"] }
 uuid = { version = "1.18", features = ["v4", "serde"] }
 wiremock = "0.6"
-futures = "0.3"
 
 [dependencies.sqlx]
 version = "0.8"

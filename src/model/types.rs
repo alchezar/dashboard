@@ -4,6 +4,7 @@ use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use std::net::Ipv4Addr;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 /// Represents a user row in the database, including the password hash.
@@ -27,7 +28,7 @@ pub struct DbUser {
 
 /// Represents a user that is safe to expose to the public API.
 ///
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ApiUser {
     pub id: Uuid,
     pub first_name: String,
@@ -43,7 +44,7 @@ pub struct ApiUser {
 
 /// Payload for creating a new user, contains the plaintext password
 ///
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct NewUser {
     pub first_name: String,
     pub last_name: String,
@@ -77,7 +78,7 @@ impl From<DbUser> for ApiUser {
 
 /// Payload for authentication an existing user.
 ///
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct LoginPayload {
     pub email: String,
     pub password: String,
@@ -112,7 +113,7 @@ impl From<String> for ServiceStatus {
 
 /// Represents the status from the `servers` table.
 ///
-#[derive(Debug, Clone, Copy, PartialEq, Display, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Display, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ServerStatus {
     // Stable statuses.
@@ -163,7 +164,7 @@ pub struct Server {
 
 /// Combined struct for the public API response.
 ///
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ApiServer {
     pub service_id: Uuid,
     pub server_id: Uuid,

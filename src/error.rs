@@ -57,11 +57,7 @@ impl IntoResponse for Error {
                 StatusCode::UNAUTHORIZED,
                 "Authorization token is missing or invalid!".to_owned(),
             ),
-            Error::Auth(AuthError::Login) => (
-                StatusCode::UNAUTHORIZED,
-                "Incorrect email or password!".to_owned(),
-            ),
-            Error::Hash(_) => (
+            Error::Auth(AuthError::Login) | Error::Hash(_) => (
                 StatusCode::UNAUTHORIZED,
                 "Incorrect email or password!".to_owned(),
             ),

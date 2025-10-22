@@ -31,12 +31,15 @@ pub fn routes() -> Router<AppState> {
 ///
 /// Returns an `Error` if the database query fails  or if JWT creation fails.
 ///
-/// # Examples
-///
-/// ```sh
-/// curl --location 'http://127.0.0.1:8080/register' --header 'Content-Type: application/json' --data '{ "first_name": "John", "last_name": "Doe", "email": "john.doe@example.com", "password": "secure_password_123", "address": "123 Main St", "city": "Anytown", "state": "Any-state", "post_code": "12345", "country": "USA", "phone_number": "555-1234" }'
-/// ```
-///
+#[utoipa::path(
+    post,
+    path = "/register",
+    request_body = NewUser,
+    responses(
+        (status = 200, body = TokenResponse, description = "User registration completed"),
+        (status = 500, body = String, description = "Internal server error")
+    )
+)]
 #[tracing::instrument(level = "trace", target = "handler",
 	skip(app_state, new_user),
 	fields(email = %new_user.email))]
@@ -71,12 +74,16 @@ async fn register(
 /// Returns an `Error` if the user is not found by email, if the password
 /// verification fails, or if JWT creation fails.
 ///
-/// # Examples
-///
-/// ```sh
-/// curl --location 'http://127.0.0.1:8080/login' --header 'Content-Type: application/json' --data '{ "email": "john.doe@example.com", "password": "secure_password_123" }'
-/// ```
-///
+#[utoipa::path(
+    post,
+    path = "/login",
+    request_body = LoginPayload,
+    responses(
+        (status = 200, body = TokenResponse, description = "User login completed"),
+        (status = 401, body = String, description = "Unauthorized"),
+        (status = 500, body = String, description = "Internal server error")
+    )
+)]
 #[tracing::instrument(level = "trace", target = "handler",
 	skip(app_state, payload),
 	fields(email = %payload.email))]

@@ -1,13 +1,19 @@
 ﻿use crate::model::types::ApiUser;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
+/// API response with JWT inside.
+///
 pub type TokenResponse = Response<TokenPayload>;
+
+/// API response with user info inside.
+///
 pub type UserResponse = Response<ApiUser>;
 
 /// Generic API response.
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct Response<T> {
     pub result: T,
 }
@@ -22,7 +28,7 @@ impl<T> Response<T> {
 
 /// Payload for successful registration or login, containing `JWT`.
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct TokenPayload {
     pub token: String,
 }
@@ -33,7 +39,9 @@ impl From<String> for TokenPayload {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+/// Payload for creating a new server.
+///
+#[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct NewServerPayload {
     pub product_id: Uuid,
     pub host_name: String,
@@ -44,12 +52,16 @@ pub struct NewServerPayload {
     pub ip_config: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+/// Payload for performing an action on a server.
+///
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct ServerActionPayload {
     pub action: ServerAction,
 }
 
-#[derive(Debug, Deserialize)]
+/// Represents the possible actions that can be performed on a server.
+///
+#[derive(Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum ServerAction {
     Start,
