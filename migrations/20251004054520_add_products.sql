@@ -11,8 +11,8 @@ CREATE TABLE products
 CREATE TABLE templates
 (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    os_name       TEXT    NOT NULL,
-    template_vmid INTEGER NOT NULL,
+    os_name       TEXT    NOT NULL UNIQUE,
+    template_vmid INTEGER NOT NULL UNIQUE,
     template_node TEXT    NOT NULL,
     virtual_type  TEXT    NOT NULL
 );

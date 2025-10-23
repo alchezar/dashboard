@@ -10,6 +10,7 @@ pub enum DashboardTable {
     Networks,
     IpAddresses,
     Services,
+    Templates,
     CustomValues,
     ConfigValues,
 }
@@ -26,6 +27,7 @@ impl std::fmt::Display for DashboardTable {
             DashboardTable::Networks => "networks",
             DashboardTable::IpAddresses => "ip_addresses",
             DashboardTable::Services => "services",
+            DashboardTable::Templates => "templates",
             DashboardTable::CustomValues => "custom_values",
             DashboardTable::ConfigValues => "config_values",
         })
@@ -93,10 +95,8 @@ pub struct ConfigOption {
     pub optionname: String,
 }
 
-/// An intermediate structure used before converting to the Dashboard's `Server`
-/// type. Represents a virtual machine record fetched directly from the WHMCS
-/// database, specifically combining data from `tblhosting` and
-/// `mod_pvewhmcs_vms`.
+/// Intermediate structure used before converting to the Dashboard's `Server`
+/// type.
 ///
 #[derive(Debug, sqlx::FromRow)]
 pub struct VmRecord {
@@ -108,8 +108,7 @@ pub struct VmRecord {
 }
 
 /// Represents a server entity in the Dashboard application, ready for insertion
-/// into the PostgreSQL `servers` table. Typically created by converting a
-/// `VmRecord` fetched from the WHMCS database.
+/// into the PostgreSQL `servers` table.
 ///
 #[derive(Debug, sqlx::FromRow)]
 pub struct Server {
@@ -152,4 +151,53 @@ pub struct IpAddress {
     pub pool_id: i32,
     pub ipaddress: String,
     pub server_id: Option<u32>,
+}
+
+/// Represents a custom field record from WHMCS's `tblcustomfields` table
+/// that defines a template.
+///
+#[derive(Debug, sqlx::FromRow)]
+pub struct TemplateField {
+    pub relid: i32,
+    pub fieldoptions: String,
+}
+
+/// Represents a template record for the Dashboard's `templates` table.
+///
+#[derive(Debug)]
+pub struct Template {
+    pub os_name: String,
+    pub template_vmid: i32,
+    pub template_node: String,
+    pub virtual_type: String,
+}
+
+impl TemplateField {
+    pub fn extract(self) -> Vec<Template> {
+        self.fieldoptions
+            .split(',')
+            .filter_map(|pairs| {
+                let mut split = pairs.split('|');
+                let name = split.next()?;
+                let vmid = split.next()?.parse::<i32>().ok()?;
+                Some((name, vmid))
+            })
+            .map(|(name, vmid)| Template {
+                os_name: name.to_owned(),
+                template_vmid: vmid.to_owned(),
+                template_node: "pve".to_owned(),
+                virtual_type: "qemu".to_owned(),
+            })
+            .collect()
+    }
+}
+
+/// Represents a service record fetched from WHMCS's `tblhosting` table.
+///
+#[derive(Debug, sqlx::FromRow)]
+pub struct Service {
+    pub id: i32,
+    pub domainstatus: String,
+    pub userid: i32,
+    pub packageid: i32,
 }

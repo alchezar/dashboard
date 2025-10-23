@@ -56,9 +56,9 @@ impl Migration {
         self.migrate_servers(&mut transaction).await?;
         self.migrate_networks(&mut transaction).await?;
         self.migrate_ip_addresses(&mut transaction).await?;
-        self.migrate_templates().await?;
+        self.migrate_templates(&mut transaction).await?;
         // Services
-        self.migrate_services().await?;
+        self.migrate_services(&mut transaction).await?;
         self.migrate_custom_values().await?;
         self.migrate_config_values().await?;
 
@@ -145,12 +145,12 @@ impl Migration {
             .try_chunks(CHUNK_SIZE);
         let mut total_affected = 0;
 
+        let groups_map = self
+            .get_existing_ids(tx, DashboardTable::ProductGroups, "whmcs_id")
+            .await?;
         while let Some(Ok(chunk)) = chunks.next().await {
             tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS products.");
-            let groups_map = self
-                .get_existing_ids(tx, DashboardTable::ProductGroups)
-                .await?;
-            total_affected += insert_products(tx, chunk, groups_map).await?;
+            total_affected += insert_products(tx, chunk, &groups_map).await?;
         }
         drop(chunks);
 
@@ -160,7 +160,7 @@ impl Migration {
     }
 
     /// Migrates custom fields from the WHMCS `tblcustomfields` to the
-    /// `config_options` table.
+    /// `custom_fields` table.
     ///
     /// # Arguments
     ///
@@ -177,9 +177,11 @@ impl Migration {
             .try_chunks(CHUNK_SIZE);
         let mut total_affected = 0;
 
+        let products_map = self
+            .get_existing_ids(tx, DashboardTable::Products, "whmcs_id")
+            .await?;
         while let Some(Ok(chunk)) = chunks.next().await {
             tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS custom fields.");
-            let products_map = self.get_existing_ids(tx, DashboardTable::Products).await?;
             total_affected += insert_custom_fields(tx, chunk, &products_map).await?;
         }
         drop(chunks);
@@ -277,7 +279,7 @@ impl Migration {
     }
 
     /// Migrates ip addresses from the WHMCS `mod_pvewhmcs_ip_addresses` to the
-    /// `networks` table.
+    /// `ip_addresses` table.
     ///
     /// # Arguments
     ///
@@ -294,10 +296,14 @@ impl Migration {
             .try_chunks(CHUNK_SIZE);
         let mut total_affected = 0;
 
+        let servers_map = self
+            .get_existing_ids(tx, DashboardTable::Servers, "whmcs_id")
+            .await?;
+        let networks_map = self
+            .get_existing_ids(tx, DashboardTable::Networks, "whmcs_id")
+            .await?;
         while let Some(Ok(chunk)) = chunks.next().await {
             tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS networks.");
-            let servers_map = self.get_existing_ids(tx, DashboardTable::Servers).await?;
-            let networks_map = self.get_existing_ids(tx, DashboardTable::Networks).await?;
             total_affected += insert_ip_addresses(tx, chunk, &servers_map, &networks_map).await?;
         }
         drop(chunks);
@@ -307,12 +313,71 @@ impl Migration {
         Ok(())
     }
 
-    async fn migrate_templates(&mut self) -> Result<()> {
+    /// Migrates templates from the WHMCS `tblcustomfields` to the `templates`
+    /// table.
+    ///
+    /// # Arguments
+    ///
+    /// * `tx`: In-progress transaction for target database.
+    ///
+    /// # Returns
+    ///
+    /// Empty `Ok(())` on success.
+    ///
+    async fn migrate_templates(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
+        let query = include_str!("sql/get_templates.sql");
+        let mut chunks = sqlx::query_as::<_, whmcs::TemplateField>(query)
+            .fetch(&self.source_pool)
+            .try_chunks(CHUNK_SIZE);
+        let mut total_affected = 0;
+
+        while let Some(Ok(chunk)) = chunks.next().await {
+            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS networks.");
+            total_affected += insert_templates(tx, chunk).await?;
+        }
+        drop(chunks);
+
+        self.collect_statistics(total_affected, DashboardTable::Templates);
         tracing::debug!("Templates migration completed.");
         Ok(())
     }
 
-    async fn migrate_services(&mut self) -> Result<()> {
+    /// Migrates services from the WHMCS `tblhosting` to the `services` table.
+    ///
+    /// # Arguments
+    ///
+    /// * `tx`: In-progress transaction for target database.
+    ///
+    /// # Returns
+    ///
+    /// Empty `Ok(())` on success.
+    ///
+    async fn migrate_services(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
+        let query = include_str!("sql/get_services.sql");
+        let mut chunks = sqlx::query_as::<_, whmcs::Service>(query)
+            .fetch(&self.source_pool)
+            .try_chunks(CHUNK_SIZE);
+        let mut total_affected = 0;
+
+        let user_map = self
+            .get_existing_ids(tx, DashboardTable::Users, "whmcs_id")
+            .await?;
+        let serv_map = self
+            .get_existing_ids(tx, DashboardTable::Servers, "whmcs_id")
+            .await?;
+        let prod_map = self
+            .get_existing_ids(tx, DashboardTable::Products, "whmcs_id")
+            .await?;
+        let temp_map = self.get_template_ids(tx).await?;
+
+        while let Some(Ok(chunk)) = chunks.next().await {
+            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS services.");
+            total_affected +=
+                insert_services(tx, chunk, &user_map, &serv_map, &prod_map, &temp_map).await?;
+        }
+        drop(chunks);
+
+        self.collect_statistics(total_affected, DashboardTable::Services);
         tracing::debug!("Services migration completed.");
         Ok(())
     }
@@ -334,7 +399,9 @@ impl Migration {
     ///
     /// # Arguments
     ///
+    /// * `tx`: In-progress transaction for target database.
     /// * `table`: Table to select WHMCS ids from.
+    /// * `key_name`: Name of the WHMCS id field.
     ///
     /// # Returns
     ///
@@ -344,23 +411,68 @@ impl Migration {
         &self,
         tx: &mut PgTransaction<'_>,
         table: DashboardTable,
+        key_name: &str,
     ) -> Result<HashMap<i32, Uuid>> {
         let mut builder = sqlx::QueryBuilder::<sqlx::Postgres>::default();
         let query = builder
-            .push("SELECT whmcs_id, id FROM ")
+            .push("SELECT ")
+            .push(key_name)
+            .push(", id FROM ")
             .push(table)
-            .push(" WHERE whmcs_id IS NOT NULL")
+            .push(" WHERE ")
+            .push(key_name)
+            .push(" IS NOT NULL")
             .build();
         Ok(query
             .fetch_all(tx.as_mut())
             .await?
             .into_iter()
             .filter_map(|row| {
-                let key = row.try_get("whmcs_id").ok();
+                let key = row.try_get(key_name).ok();
                 let value = row.try_get("id").ok();
                 key.zip(value)
             })
             .collect::<HashMap<i32, Uuid>>())
+    }
+
+    /// Retrieves a map of WHMCS product IDs to Dashboard template UUIDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `tx`: In-progress transaction for target database.
+    ///
+    /// # Returns
+    ///
+    /// `HashMap` of relationship between the WHMCS product ID and the Dashboard
+    /// template UUID.
+    ///
+    async fn get_template_ids(&self, tx: &mut PgTransaction<'_>) -> Result<HashMap<i32, Uuid>> {
+        // Template field info from source WHMCS.
+        let query = include_str!("sql/get_templates.sql");
+        let relid_to_vmid = sqlx::query_as::<_, whmcs::TemplateField>(query)
+            .fetch_all(&self.source_pool)
+            .await?
+            .into_iter()
+            .map(|temp_field| (temp_field.relid, temp_field.extract()))
+            .flat_map(|(relid, vec)| vec.into_iter().map(move |val| (relid, val.template_vmid)))
+            .collect::<HashMap<_, _>>();
+
+        // Proxmox template_vmid to Dashboard template UUID relationship.
+        let vmid_to_temp_id = self
+            .get_existing_ids(tx, DashboardTable::Templates, "template_vmid")
+            .await?;
+
+        // Combine to get the final map: WHMCS product_id to Dashboard template_id
+        let prod_id_to_temp_id_map = relid_to_vmid
+            .into_iter()
+            .filter_map(|(whmcs_product_id, template_vmid)| {
+                vmid_to_temp_id
+                    .get(&template_vmid)
+                    .map(|template_id| (whmcs_product_id, *template_id))
+            })
+            .collect::<HashMap<_, _>>();
+
+        Ok(prod_id_to_temp_id_map)
     }
 
     /// Accumulates migration statistics for a given table.
@@ -535,7 +647,7 @@ async fn insert_product_groups(
 async fn insert_products(
     tx: &mut PgTransaction<'_>,
     products: Vec<whmcs::Product>,
-    group_id_map: HashMap<i32, Uuid>,
+    group_id_map: &HashMap<i32, Uuid>,
 ) -> Result<u64> {
     #[rustfmt::skip]
     let fields_iter = products
@@ -637,7 +749,7 @@ async fn insert_servers(
 ) -> Result<u64> {
     let servers = vm_records
         .into_iter()
-        .map(|vm| vm.into())
+        .map(whmcs::Server::from)
         .collect::<Vec<whmcs::Server>>();
 
     Ok(unnest_insert!(
@@ -681,6 +793,8 @@ async fn insert_networks(tx: &mut PgTransaction<'_>, networks: Vec<whmcs::Networ
 ///
 /// * `tx`: In-progress transaction for target database.
 /// * `address`: Vector of `whmcs::IpAddress` structs to be inserted.
+/// * `server_map`: WHMCS ID to Dashboard UUID relationship for servers.
+/// * `network_map`: WHMCS ID to Dashboard UUID relationship for networks.
 ///
 /// # Returns
 ///
@@ -717,6 +831,90 @@ async fn insert_ip_addresses(
             (2, 1, network_id, uuid),
             (3, 2, server_id, uuid),
             (4, 3, whmcs_id, int4),
+        ]
+    )?)
+}
+
+/// Helper function to bulk insert templates into the target database.
+///
+/// # Arguments
+///
+/// * `tx`: In-progress transaction for target database.
+/// * `temp_fields`: Vector of `whmcs::TemplateFields` structs to be inserted.
+///
+/// # Returns
+///
+/// On success, the number of affected rows.
+///
+async fn insert_templates(
+    tx: &mut PgTransaction<'_>,
+    temp_fields: Vec<whmcs::TemplateField>,
+) -> Result<u64> {
+    let templates = temp_fields
+        .into_iter()
+        .map(whmcs::TemplateField::extract)
+        .flatten()
+        .collect::<Vec<_>>();
+
+    Ok(unnest_insert!(
+        templates.into_iter() => templates => tx,
+        [
+            (1, os_name, os_name, text),
+            (2, template_vmid, template_vmid, int4),
+            (3, template_node, template_node, text),
+            (4, virtual_type, virtual_type, text),
+        ]
+    )?)
+}
+
+/// Helper function to bulk insert services into the target database.
+///
+/// # Arguments
+///
+/// * `tx`: In-progress transaction for target database.
+/// * `services`: Vector of `whmcs::Service` structs to be inserted.
+/// * `user_map`: WHMCS ID to Dashboard UUID relationship for users.
+/// * `server_map`: WHMCS ID to Dashboard UUID relationship for servers.
+/// * `product_map`: WHMCS ID to Dashboard UUID relationship for products.
+/// * `template_map`: WHMCS ID to Dashboard UUID relationship for templates.
+///
+/// # Returns
+///
+/// On success, the number of affected rows.
+///
+async fn insert_services(
+    tx: &mut PgTransaction<'_>,
+    services: Vec<whmcs::Service>,
+    user_map: &HashMap<i32, Uuid>,
+    server_map: &HashMap<i32, Uuid>,
+    product_map: &HashMap<i32, Uuid>,
+    template_map: &HashMap<i32, Uuid>,
+) -> Result<u64> {
+    let iter = services.into_iter().filter_map(|service| {
+        let user_uuid = *user_map.get(&service.userid)?;
+        let product_uuid = *product_map.get(&service.packageid)?;
+        let server_uuid = *server_map.get(&service.id)?;
+        let template_uuid = *template_map.get(&service.packageid)?;
+
+        Some((
+            service.domainstatus,
+            user_uuid,
+            server_uuid,
+            product_uuid,
+            template_uuid,
+            service.id,
+        ))
+    });
+
+    Ok(unnest_insert!(
+        iter => services => tx,
+        [
+            (1, 0, status, text),
+            (2, 1, user_id, uuid),
+            (3, 2, server_id, uuid),
+            (4, 3, product_id, uuid),
+            (5, 4, template_id, uuid),
+            (6, 5, whmcs_id, int4),
         ]
     )?)
 }
