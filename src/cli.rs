@@ -12,6 +12,13 @@ pub struct Cli {
     #[arg(
         short,
         long,
+        help = "Sets the number of records to process per batch",
+        env = "CHUNK_SIZE"
+    )]
+    pub chunk_size: usize,
+    #[arg(
+        short,
+        long,
         help = "Source database URL (WHMCS MySQL)",
         env = "SOURCE_URL"
     )]

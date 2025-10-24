@@ -8,9 +8,8 @@ use sqlx::mysql::MySqlPoolOptions;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{MySqlPool, PgPool, PgTransaction, Row};
 use std::collections::HashMap;
+use std::pin::Pin;
 use uuid::Uuid;
-
-const CHUNK_SIZE: usize = 1024;
 
 /// Holds the context and shared state for the entire migration process.
 ///
@@ -18,6 +17,7 @@ pub struct Migration {
     source_pool: MySqlPool,
     target_pool: PgPool,
     dry_run: bool,
+    chunk_size: usize,
     statistic: HashMap<DashboardTable, u64>,
 }
 
@@ -37,6 +37,7 @@ impl Migration {
             source_pool,
             target_pool,
             dry_run: cli.dry_run,
+            chunk_size: cli.chunk_size,
             statistic: HashMap::new(),
         })
     }
@@ -77,21 +78,14 @@ impl Migration {
     /// Empty `Ok(())` on success.
     ///
     async fn migrate_users(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
-        let query = include_str!("sql/get_active_clients.sql");
-        let mut chunks = sqlx::query_as::<_, whmcs::Client>(query)
-            .fetch(&self.source_pool)
-            .try_chunks(CHUNK_SIZE);
-        let mut total_affected = 0;
-
-        while let Some(Ok(chunk)) = chunks.next().await {
-            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS clients.");
-            total_affected += insert_users(tx, chunk).await?;
-        }
-        drop(chunks);
-
-        self.collect_statistics(total_affected, DashboardTable::Users);
-        tracing::debug!("Users migration completed.");
-        Ok(())
+        self.migrate_table(
+            include_str!("sql/get_active_clients.sql"),
+            DashboardTable::Users,
+            tx,
+            (),
+            |tx, chunk, _| Box::pin(insert_users(tx, chunk)),
+        )
+        .await
     }
 
     /// Migrates product groups from the WHMCS `tblproductgroups` to the
@@ -106,21 +100,14 @@ impl Migration {
     /// Empty `Ok(())` on success.
     ///
     async fn migrate_product_groups(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
-        let query = include_str!("sql/get_product_groups.sql");
-        let mut chunks = sqlx::query_as::<_, whmcs::ProductGroup>(query)
-            .fetch(&self.source_pool)
-            .try_chunks(CHUNK_SIZE);
-        let mut total_affected = 0;
-
-        while let Some(Ok(chunk)) = chunks.next().await {
-            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS product groups.");
-            total_affected += insert_product_groups(tx, chunk).await?;
-        }
-        drop(chunks);
-
-        self.collect_statistics(total_affected, DashboardTable::ProductGroups);
-        tracing::debug!("Product groups migration completed.");
-        Ok(())
+        self.migrate_table(
+            include_str!("sql/get_product_groups.sql"),
+            DashboardTable::ProductGroups,
+            tx,
+            (),
+            |tx, chunk, _| Box::pin(insert_product_groups(tx, chunk)),
+        )
+        .await
     }
 
     /// Migrates product from the WHMCS `tblproducts` to the
@@ -135,24 +122,18 @@ impl Migration {
     /// Empty `Ok(())` on success.
     ///
     async fn migrate_products(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
-        let query = include_str!("sql/get_products.sql");
-        let mut chunks = sqlx::query_as::<_, whmcs::Product>(query)
-            .fetch(&self.source_pool)
-            .try_chunks(CHUNK_SIZE);
-        let mut total_affected = 0;
-
         let groups_map = self
             .get_existing_ids(tx, DashboardTable::ProductGroups, "whmcs_id")
             .await?;
-        while let Some(Ok(chunk)) = chunks.next().await {
-            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS products.");
-            total_affected += insert_products(tx, chunk, &groups_map).await?;
-        }
-        drop(chunks);
 
-        self.collect_statistics(total_affected, DashboardTable::Products);
-        tracing::debug!("Products migration completed.");
-        Ok(())
+        self.migrate_table(
+            include_str!("sql/get_products.sql"),
+            DashboardTable::Products,
+            tx,
+            groups_map,
+            |tx, chunk, map| Box::pin(insert_products(tx, chunk, &map)),
+        )
+        .await
     }
 
     /// Migrates custom fields from the WHMCS `tblcustomfields` to the
@@ -167,24 +148,18 @@ impl Migration {
     /// Empty `Ok(())` on success.
     ///
     async fn migrate_custom_fields(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
-        let query = include_str!("sql/get_custom_fields.sql");
-        let mut chunks = sqlx::query_as::<_, whmcs::CustomField>(query)
-            .fetch(&self.source_pool)
-            .try_chunks(CHUNK_SIZE);
-        let mut total_affected = 0;
-
         let products_map = self
             .get_existing_ids(tx, DashboardTable::Products, "whmcs_id")
             .await?;
-        while let Some(Ok(chunk)) = chunks.next().await {
-            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS custom fields.");
-            total_affected += insert_custom_fields(tx, chunk, &products_map).await?;
-        }
-        drop(chunks);
 
-        self.collect_statistics(total_affected, DashboardTable::CustomFields);
-        tracing::debug!("Custom fields migration completed.");
-        Ok(())
+        self.migrate_table(
+            include_str!("sql/get_custom_fields.sql"),
+            DashboardTable::CustomFields,
+            tx,
+            products_map,
+            |tx, chunk, prod_map| Box::pin(insert_custom_fields(tx, chunk, &prod_map)),
+        )
+        .await
     }
 
     /// Migrates config options from the WHMCS `tblproductconfigoptions` to the
@@ -199,21 +174,14 @@ impl Migration {
     /// Empty `Ok(())` on success.
     ///
     async fn migrate_config_options(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
-        let query = include_str!("sql/get_config_options.sql");
-        let mut chunks = sqlx::query_as::<_, whmcs::ConfigOption>(query)
-            .fetch(&self.source_pool)
-            .try_chunks(CHUNK_SIZE);
-        let mut total_affected = 0;
-
-        while let Some(Ok(chunk)) = chunks.next().await {
-            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS configurable options.");
-            total_affected += insert_config_options(tx, chunk).await?;
-        }
-        drop(chunks);
-
-        self.collect_statistics(total_affected, DashboardTable::ConfigOptions);
-        tracing::debug!("Configurable options migration completed.");
-        Ok(())
+        self.migrate_table(
+            include_str!("sql/get_config_options.sql"),
+            DashboardTable::ConfigOptions,
+            tx,
+            (),
+            |tx, chunk, _| Box::pin(insert_config_options(tx, chunk)),
+        )
+        .await
     }
 
     /// Migrates servers from the WHMCS `mod_pvewhmcs_wms` to the `servers`
@@ -228,21 +196,14 @@ impl Migration {
     /// Empty `Ok(())` on success.
     ///
     async fn migrate_servers(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
-        let query = include_str!("sql/get_servers.sql");
-        let mut chunks = sqlx::query_as::<_, whmcs::VmRecord>(query)
-            .fetch(&self.source_pool)
-            .try_chunks(CHUNK_SIZE);
-        let mut total_affected = 0;
-
-        while let Some(Ok(chunk)) = chunks.next().await {
-            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS servers.");
-            total_affected += insert_servers(tx, chunk).await?;
-        }
-        drop(chunks);
-
-        self.collect_statistics(total_affected, DashboardTable::Servers);
-        tracing::debug!("Servers migration completed.");
-        Ok(())
+        self.migrate_table(
+            include_str!("sql/get_servers.sql"),
+            DashboardTable::Servers,
+            tx,
+            (),
+            |tx, chunk, _| Box::pin(insert_servers(tx, chunk)),
+        )
+        .await
     }
 
     /// Migrates networks from the WHMCS `mod_pvewhmcs_ip_pools` to the
@@ -257,21 +218,14 @@ impl Migration {
     /// Empty `Ok(())` on success.
     ///
     async fn migrate_networks(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
-        let query = include_str!("sql/get_networks.sql");
-        let mut chunks = sqlx::query_as::<_, whmcs::Network>(query)
-            .fetch(&self.source_pool)
-            .try_chunks(CHUNK_SIZE);
-        let mut total_affected = 0;
-
-        while let Some(Ok(chunk)) = chunks.next().await {
-            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS network.");
-            total_affected += insert_networks(tx, chunk).await?;
-        }
-        drop(chunks);
-
-        self.collect_statistics(total_affected, DashboardTable::Networks);
-        tracing::debug!("Networks migration completed.");
-        Ok(())
+        self.migrate_table(
+            include_str!("sql/get_networks.sql"),
+            DashboardTable::Networks,
+            tx,
+            (),
+            |tx, chunk, _| Box::pin(insert_networks(tx, chunk)),
+        )
+        .await
     }
 
     /// Migrates ip addresses from the WHMCS `mod_pvewhmcs_ip_addresses` to the
@@ -286,27 +240,23 @@ impl Migration {
     /// Empty `Ok(())` on success.
     ///
     async fn migrate_ip_addresses(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
-        let query = include_str!("sql/get_ip_addresses.sql");
-        let mut chunks = sqlx::query_as::<_, whmcs::IpAddress>(query)
-            .fetch(&self.source_pool)
-            .try_chunks(CHUNK_SIZE);
-        let mut total_affected = 0;
-
         let servers_map = self
             .get_existing_ids(tx, DashboardTable::Servers, "whmcs_id")
             .await?;
         let networks_map = self
             .get_existing_ids(tx, DashboardTable::Networks, "whmcs_id")
             .await?;
-        while let Some(Ok(chunk)) = chunks.next().await {
-            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS networks.");
-            total_affected += insert_ip_addresses(tx, chunk, &servers_map, &networks_map).await?;
-        }
-        drop(chunks);
 
-        self.collect_statistics(total_affected, DashboardTable::IpAddresses);
-        tracing::debug!("IP addresses migration completed.");
-        Ok(())
+        self.migrate_table(
+            include_str!("sql/get_ip_addresses.sql"),
+            DashboardTable::IpAddresses,
+            tx,
+            (servers_map, networks_map),
+            |tx, chunk, (serv_map, net_map)| {
+                Box::pin(insert_ip_addresses(tx, chunk, &serv_map, &net_map))
+            },
+        )
+        .await
     }
 
     /// Migrates templates from the WHMCS `tblcustomfields` to the `templates`
@@ -321,21 +271,14 @@ impl Migration {
     /// Empty `Ok(())` on success.
     ///
     async fn migrate_templates(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
-        let query = include_str!("sql/get_templates.sql");
-        let mut chunks = sqlx::query_as::<_, whmcs::TemplateField>(query)
-            .fetch(&self.source_pool)
-            .try_chunks(CHUNK_SIZE);
-        let mut total_affected = 0;
-
-        while let Some(Ok(chunk)) = chunks.next().await {
-            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS networks.");
-            total_affected += insert_templates(tx, chunk).await?;
-        }
-        drop(chunks);
-
-        self.collect_statistics(total_affected, DashboardTable::Templates);
-        tracing::debug!("Templates migration completed.");
-        Ok(())
+        self.migrate_table(
+            include_str!("sql/get_templates.sql"),
+            DashboardTable::Templates,
+            tx,
+            (),
+            |tx, chunk, _| Box::pin(insert_templates(tx, chunk)),
+        )
+        .await
     }
 
     /// Migrates services from the WHMCS `tblhosting` to the `services` table.
@@ -349,12 +292,6 @@ impl Migration {
     /// Empty `Ok(())` on success.
     ///
     async fn migrate_services(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
-        let query = include_str!("sql/get_services.sql");
-        let mut chunks = sqlx::query_as::<_, whmcs::Service>(query)
-            .fetch(&self.source_pool)
-            .try_chunks(CHUNK_SIZE);
-        let mut total_affected = 0;
-
         let user_map = self
             .get_existing_ids(tx, DashboardTable::Users, "whmcs_id")
             .await?;
@@ -366,16 +303,18 @@ impl Migration {
             .await?;
         let temp_map = self.get_template_ids(tx).await?;
 
-        while let Some(Ok(chunk)) = chunks.next().await {
-            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS services.");
-            total_affected +=
-                insert_services(tx, chunk, &user_map, &serv_map, &prod_map, &temp_map).await?;
-        }
-        drop(chunks);
-
-        self.collect_statistics(total_affected, DashboardTable::Services);
-        tracing::debug!("Services migration completed.");
-        Ok(())
+        self.migrate_table(
+            include_str!("sql/get_services.sql"),
+            DashboardTable::Services,
+            tx,
+            (user_map, serv_map, prod_map, temp_map),
+            |tx, chunk, (user_map, serv_map, prod_map, temp_map)| {
+                Box::pin(insert_services(
+                    tx, chunk, &user_map, &serv_map, &prod_map, &temp_map,
+                ))
+            },
+        )
+        .await
     }
 
     /// Migrates custom fields values from the WHMCS `tblcustomfieldsvalues` to
@@ -390,31 +329,27 @@ impl Migration {
     /// Empty `Ok(())` on success.
     ///
     async fn migrate_custom_values(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
-        let query = include_str!("sql/get_custom_values.sql");
-        let mut chunks = sqlx::query_as::<_, whmcs::CustomValue>(query)
-            .fetch(&self.source_pool)
-            .try_chunks(CHUNK_SIZE);
-        let mut total_affected = 0;
-
         let service_map = self
             .get_existing_ids(tx, DashboardTable::Services, "whmcs_id")
             .await?;
         let custom_map = self
             .get_existing_ids(tx, DashboardTable::CustomFields, "whmcs_id")
             .await?;
-        if let Some(Ok(chunk)) = chunks.next().await {
-            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS custom field values.");
-            total_affected += insert_custom_values(tx, chunk, &service_map, &custom_map).await?;
-        }
-        drop(chunks);
 
-        self.collect_statistics(total_affected, DashboardTable::CustomValues);
-        tracing::debug!("Custom field values migration completed.");
-        Ok(())
+        self.migrate_table(
+            include_str!("sql/get_custom_values.sql"),
+            DashboardTable::CustomValues,
+            tx,
+            (service_map, custom_map),
+            |tx, chunk, (serv_map, cust_map)| {
+                Box::pin(insert_custom_values(tx, chunk, &serv_map, &cust_map))
+            },
+        )
+        .await
     }
 
-    /// Migrates configurable option values from the WHMCS `tblhostingconfigoptions`
-    /// to the `config_values` table.
+    /// Migrates configurable option values from the WHMCS
+    /// `tblhostingconfigoptions` to the `config_values` table.
     ///
     /// # Arguments
     ///
@@ -425,27 +360,23 @@ impl Migration {
     /// Empty `Ok(())` on success.
     ///
     async fn migrate_config_values(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
-        let query = include_str!("sql/get_config_values.sql");
-        let mut chunks = sqlx::query_as::<_, whmcs::ConfigValue>(query)
-            .fetch(&self.source_pool)
-            .try_chunks(CHUNK_SIZE);
-        let mut total_affected = 0;
-
         let service_map = self
             .get_existing_ids(tx, DashboardTable::Services, "whmcs_id")
             .await?;
         let config_map = self
             .get_existing_ids(tx, DashboardTable::ConfigOptions, "whmcs_id")
             .await?;
-        if let Some(Ok(chunk)) = chunks.next().await {
-            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS configurable option values.");
-            total_affected += insert_config_values(tx, chunk, &service_map, &config_map).await?;
-        }
-        drop(chunks);
 
-        self.collect_statistics(total_affected, DashboardTable::ConfigValues);
-        tracing::debug!("Configurable option values migration completed.");
-        Ok(())
+        self.migrate_table(
+            include_str!("sql/get_config_values.sql"),
+            DashboardTable::ConfigValues,
+            tx,
+            (service_map, config_map),
+            |tx, chunk, (serv_map, conf_map)| {
+                Box::pin(insert_config_values(tx, chunk, &serv_map, &conf_map))
+            },
+        )
+        .await
     }
 
     // -------------------------------------------------------------------------
@@ -542,6 +473,63 @@ impl Migration {
         if affected > 0 {
             *self.statistic.entry(table).or_default() += affected;
         }
+    }
+
+    /// A generic helper function to stream data from the source database,
+    /// process it in chunks, and insert it into the target database.
+    ///
+    /// # Types
+    ///
+    /// * `C`: Context data structure type, passed to the insertion function.
+    /// * `F`: Insertion closure function type.
+    /// * `S`: Source data structure type, deserialized from the WHMCS database.
+    ///
+    /// # Arguments
+    ///
+    /// * `query`: SQL query string for fetching data from the source database.
+    /// * `table`: `DashboardTable` enum variant, for logging and statistics.
+    /// * `tx`: In-progress transaction for target database.
+    /// * `context`: Context data needed by `insert_fn`.
+    /// * `insert_fn`: Closure that handles the transformation and insertion of
+    ///   a single chunk of data.
+    ///
+    /// # Returns
+    ///
+    /// Empty `Ok(())` on success.
+    ///
+    async fn migrate_table<C, F, S>(
+        &mut self,
+        query: &str,
+        table: DashboardTable,
+        tx: &mut PgTransaction<'_>,
+        context: C,
+        mut insert_fn: F,
+    ) -> Result<()>
+    where
+        C: Send,
+        S: for<'r> sqlx::FromRow<'r, sqlx::mysql::MySqlRow> + Unpin + Send,
+        F: for<'a> FnMut(
+            &'a mut PgTransaction<'_>,
+            Vec<S>,
+            &'a C,
+        ) -> Pin<Box<dyn Future<Output = Result<u64>> + Send + 'a>>,
+    {
+        // Set up a stream to fetch source data in paginated chunks.
+        let mut chunks = sqlx::query_as::<_, S>(query)
+            .fetch(&self.source_pool)
+            .try_chunks(self.chunk_size);
+        let mut total_affected = 0;
+
+        while let Some(Ok(chunk)) = chunks.next().await {
+            tracing::trace!(size = %chunk.len(), %table, "Insert a chunk of WHMCS data.",);
+            total_affected += insert_fn(tx, chunk, &context).await?;
+        }
+
+        drop(chunks);
+        tracing::debug!("{} migration completed.", table);
+        self.collect_statistics(total_affected, table);
+
+        Ok(())
     }
 }
 
