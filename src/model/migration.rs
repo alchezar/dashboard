@@ -45,22 +45,18 @@ impl Migration {
     ///
     pub async fn run(&mut self) -> Result<()> {
         let mut transaction = self.target_pool.begin().await?;
-        // Users
         self.migrate_users(&mut transaction).await?;
-        // Products
         self.migrate_product_groups(&mut transaction).await?;
         self.migrate_products(&mut transaction).await?;
         self.migrate_custom_fields(&mut transaction).await?;
         self.migrate_config_options(&mut transaction).await?;
-        // Servers
         self.migrate_servers(&mut transaction).await?;
         self.migrate_networks(&mut transaction).await?;
         self.migrate_ip_addresses(&mut transaction).await?;
         self.migrate_templates(&mut transaction).await?;
-        // Services
         self.migrate_services(&mut transaction).await?;
-        self.migrate_custom_values().await?;
-        self.migrate_config_values().await?;
+        self.migrate_custom_values(&mut transaction).await?;
+        self.migrate_config_values(&mut transaction).await?;
 
         match self.dry_run {
             true => transaction.rollback().await?,
@@ -382,12 +378,72 @@ impl Migration {
         Ok(())
     }
 
-    async fn migrate_custom_values(&mut self) -> Result<()> {
+    /// Migrates custom fields values from the WHMCS `tblcustomfieldsvalues` to
+    /// the `custom_values` table.
+    ///
+    /// # Arguments
+    ///
+    /// * `tx`: In-progress transaction for target database.
+    ///
+    /// # Returns
+    ///
+    /// Empty `Ok(())` on success.
+    ///
+    async fn migrate_custom_values(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
+        let query = include_str!("sql/get_custom_values.sql");
+        let mut chunks = sqlx::query_as::<_, whmcs::CustomValue>(query)
+            .fetch(&self.source_pool)
+            .try_chunks(CHUNK_SIZE);
+        let mut total_affected = 0;
+
+        let service_map = self
+            .get_existing_ids(tx, DashboardTable::Services, "whmcs_id")
+            .await?;
+        let custom_map = self
+            .get_existing_ids(tx, DashboardTable::CustomFields, "whmcs_id")
+            .await?;
+        if let Some(Ok(chunk)) = chunks.next().await {
+            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS custom field values.");
+            total_affected += insert_custom_values(tx, chunk, &service_map, &custom_map).await?;
+        }
+        drop(chunks);
+
+        self.collect_statistics(total_affected, DashboardTable::CustomValues);
         tracing::debug!("Custom field values migration completed.");
         Ok(())
     }
 
-    async fn migrate_config_values(&mut self) -> Result<()> {
+    /// Migrates configurable option values from the WHMCS `tblhostingconfigoptions`
+    /// to the `config_values` table.
+    ///
+    /// # Arguments
+    ///
+    /// * `tx`: In-progress transaction for target database.
+    ///
+    /// # Returns
+    ///
+    /// Empty `Ok(())` on success.
+    ///
+    async fn migrate_config_values(&mut self, tx: &mut PgTransaction<'_>) -> Result<()> {
+        let query = include_str!("sql/get_config_values.sql");
+        let mut chunks = sqlx::query_as::<_, whmcs::ConfigValue>(query)
+            .fetch(&self.source_pool)
+            .try_chunks(CHUNK_SIZE);
+        let mut total_affected = 0;
+
+        let service_map = self
+            .get_existing_ids(tx, DashboardTable::Services, "whmcs_id")
+            .await?;
+        let config_map = self
+            .get_existing_ids(tx, DashboardTable::ConfigOptions, "whmcs_id")
+            .await?;
+        if let Some(Ok(chunk)) = chunks.next().await {
+            tracing::trace!(size = %chunk.len(), "Fetching a chunk of WHMCS configurable option values.");
+            total_affected += insert_config_values(tx, chunk, &service_map, &config_map).await?;
+        }
+        drop(chunks);
+
+        self.collect_statistics(total_affected, DashboardTable::ConfigValues);
         tracing::debug!("Configurable option values migration completed.");
         Ok(())
     }
@@ -915,6 +971,84 @@ async fn insert_services(
             (4, 3, product_id, uuid),
             (5, 4, template_id, uuid),
             (6, 5, whmcs_id, int4),
+        ]
+    )?)
+}
+
+/// Helper function to bulk insert services into the target database.
+///
+/// # Arguments
+///
+/// * `tx`: In-progress transaction for target database.
+/// * `values`: Vector of `whmcs::CustomValue` structs to be inserted.
+/// * `service_map`: WHMCS ID to Dashboard UUID relationship for services.
+/// * `custom_map`: WHMCS ID to Dashboard UUID relationship for custom fields.
+///
+/// # Returns
+///
+/// On success, the number of affected rows.
+///
+async fn insert_custom_values(
+    tx: &mut PgTransaction<'_>,
+    values: Vec<whmcs::CustomValue>,
+    service_map: &HashMap<i32, Uuid>,
+    custom_map: &HashMap<i32, Uuid>,
+) -> Result<u64> {
+    let iter = values.into_iter().filter_map(|value| {
+        let service_uuid = *service_map.get(&value.relid)?;
+        let config_uuid = *custom_map.get(&value.fieldid)?;
+        let whmcs_id = value.id as i32;
+        Some((service_uuid, config_uuid, value.value, whmcs_id))
+    });
+
+    Ok(unnest_insert!(
+        iter => custom_values => tx,
+        [
+            (1, 0, service_id, uuid),
+            (2, 1, custom_field_id, uuid),
+            (3, 2, value, text),
+            (4, 3, whmcs_id, int4),
+        ]
+    )?)
+}
+
+/// Helper function to bulk insert services into the target database.
+///
+/// # Arguments
+///
+/// * `tx`: In-progress transaction for target database.
+/// * `values`: Vector of `whmcs::ConfigValue` structs to be inserted.
+/// * `service_map`: WHMCS ID to Dashboard UUID relationship for services.
+/// * `config_map`: WHMCS ID to Dashboard UUID relationship for config options.
+///
+/// # Returns
+///
+/// On success, the number of affected rows.
+///
+async fn insert_config_values(
+    tx: &mut PgTransaction<'_>,
+    values: Vec<whmcs::ConfigValue>,
+    service_map: &HashMap<i32, Uuid>,
+    config_map: &HashMap<i32, Uuid>,
+) -> Result<u64> {
+    let iter = values.into_iter().filter_map(|value| {
+        let service_uuid = *service_map.get(&value.relid)?;
+        let config_uuid = *config_map.get(&value.configid)?;
+        let name = value
+            .optionname
+            .chars()
+            .take_while(|char| char.is_numeric())
+            .collect::<String>();
+        Some((service_uuid, config_uuid, name, value.id))
+    });
+
+    Ok(unnest_insert!(
+        iter => config_values => tx,
+        [
+            (1, 0, service_id, uuid),
+            (2, 1, config_id, uuid),
+            (3, 2, value, text),
+            (4, 3, whmcs_id, int4),
         ]
     )?)
 }

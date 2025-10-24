@@ -201,3 +201,25 @@ pub struct Service {
     pub userid: i32,
     pub packageid: i32,
 }
+
+/// Represents a configurable option value record from WHMCS's
+/// `tblhostingconfigoptions` table.
+///
+#[derive(Debug, sqlx::FromRow)]
+pub struct ConfigValue {
+    pub id: i32,
+    pub relid: i32,
+    pub configid: i32,
+    pub optionname: String,
+}
+
+/// Represents a custom field value record from WHMCS's `tblcustomfieldsvalues`
+/// table.
+///
+#[derive(Debug, sqlx::FromRow)]
+pub struct CustomValue {
+    pub id: u32,
+    pub fieldid: i32,
+    pub relid: i32,
+    pub value: String,
+}
