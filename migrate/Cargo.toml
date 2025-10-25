@@ -4,14 +4,15 @@ version = "0.2.0"
 edition = "2024"
 
 [dependencies]
-common = { path = "../common" }
+dashboard_common = { path = "../common" }
+
 clap = { version = "4.5", features = ["derive", "env"] }
-futures = "0.3"
-tracing = "0.1"
-tokio = { version = "1.48", features = ["full"] }
-serde = { version = "1.0", features = ["derive"] }
-uuid = { version = "1.18", features = ["v4", "serde"] }
 dotenv = "0.15"
+futures = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.48", features = ["full"] }
+tracing = "0.1"
+uuid = { version = "1.18", features = ["v4", "serde"] }
 
 [dependencies.sqlx]
 version = "0.8"

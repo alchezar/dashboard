@@ -5,7 +5,7 @@ use crate::proxmox::types::TaskRef;
 use crate::services;
 use crate::state::AppState;
 use crate::web::types::ServerAction;
-use common::error::Result;
+use dashboard_common::error::Result;
 use sqlx::PgTransaction;
 use std::sync::Arc;
 use uuid::Uuid;

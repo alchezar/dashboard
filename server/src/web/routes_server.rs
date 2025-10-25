@@ -12,7 +12,7 @@ use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Extension, Json};
 use axum::{Router, middleware};
-use common::error::Result;
+use dashboard_common::error::Result;
 use uuid::Uuid;
 
 pub fn routes() -> Router<AppState> {

@@ -4,7 +4,7 @@ use crate::web::middleware as mw;
 use crate::web::{self, routes_login, routes_server};
 use axum::serve::Serve;
 use axum::{Router, middleware};
-use common::error::Result;
+use dashboard_common::error::Result;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};

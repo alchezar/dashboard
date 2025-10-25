@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use common::error::Result;
+use dashboard_common::error::Result;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;

@@ -1,7 +1,7 @@
 ﻿use crate::proxmox::Proxmox;
 use crate::proxmox::types::*;
 use async_trait::async_trait;
-use common::error::{Error, ProxmoxError, Result};
+use dashboard_common::error::{Error, ProxmoxError, Result};
 use reqwest::Client;
 use reqwest::header::AUTHORIZATION;
 use serde::Deserialize;

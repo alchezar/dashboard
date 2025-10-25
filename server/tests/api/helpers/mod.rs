@@ -5,7 +5,7 @@ pub mod requests;
 // -------------------------------------------------------------------------
 
 use async_trait::async_trait;
-use common::error::Result;
+use dashboard_common::error::Result;
 use dashboard_server::app::App;
 use dashboard_server::model::queries;
 use dashboard_server::model::types::ApiServer;

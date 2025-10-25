@@ -4,7 +4,7 @@ use axum::http::Request;
 use axum::http::header::AUTHORIZATION;
 use axum::middleware::Next;
 use axum::response::Response;
-use common::error::{AuthError, Error, Result};
+use dashboard_common::error::{AuthError, Error, Result};
 
 /// A middleware to print a blank line after each response.
 ///

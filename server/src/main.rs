@@ -1,9 +1,9 @@
-﻿use common::error::Result;
-use common::telemetry;
 use dashboard::app::App;
 use dashboard::config::CONFIG;
 use dashboard::proxmox::client::ProxmoxClient;
 use dashboard::state::AppState;
+use dashboard_common::error::Result;
+use dashboard_common::telemetry;
 use dashboard_server as dashboard;
 use std::sync::Arc;
 use tracing::Level;

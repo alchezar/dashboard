@@ -11,7 +11,7 @@ pub struct Claims {
 }
 
 pub mod password {
-    use common::error::{AuthError, Error, Result};
+    use dashboard_common::error::{AuthError, Error, Result};
     use rand::Rng;
 
     /// Hashes a password using Argon2.
@@ -53,7 +53,7 @@ pub mod token {
     use crate::config::CONFIG;
     use crate::web::auth::Claims;
     use chrono::{Duration, Utc};
-    use common::error::{AuthError, Error, Result};
+    use dashboard_common::error::{AuthError, Error, Result};
     use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
     use uuid::Uuid;
 

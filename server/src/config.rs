@@ -1,4 +1,4 @@
-use common::error::{Error, Result};
+use dashboard_common::error::{Error, Result};
 use serde::Deserialize;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::LazyLock;
@@ -26,7 +26,7 @@ impl Config {
         dotenv::dotenv()?;
         tracing::info!(target: "config", ".env loaded.");
 
-        let config_dif = std::env::current_dir()?.join("configuration");
+        let config_dif = std::env::current_dir()?.join("../configuration");
         let env_filename = (*std::env::var("APP_ENVIRONMENT")?)
             .try_into()
             .unwrap_or(Environment::Local)

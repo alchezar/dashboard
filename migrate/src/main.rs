@@ -1,8 +1,8 @@
 ﻿use clap::Parser;
-use common::error::Result;
-use common::telemetry;
+use dashboard_common::error::Result;
+use dashboard_common::telemetry;
 use migration_utility::cli::Cli;
-use migration_utility::migration::Migration;
+use migration_utility::etl::migration::Migration;
 use tracing::Level;
 
 /// The main entry point for the migration utility.

@@ -1,6 +1,6 @@
 ﻿use crate::proxmox::Proxmox;
 use crate::proxmox::types::{TaskRef, TaskStatus};
-use common::error::{Error, Result};
+use dashboard_common::error::{Error, Result};
 use sqlx::PgTransaction;
 use std::sync::Arc;
 use std::time::{Duration, Instant};

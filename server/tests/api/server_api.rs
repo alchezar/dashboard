@@ -6,7 +6,7 @@ use dashboard_server::web::types::{Response, TokenPayload};
 use serde_json::json;
 use sqlx::PgPool;
 
-#[sqlx::test]
+#[sqlx::test(migrations = "../migrations")]
 async fn server_list_for_new_user_should_be_empty(pool: PgPool) {
     // Arrange
     let app = TestApp::new(pool).await;
@@ -30,7 +30,7 @@ async fn server_list_for_new_user_should_be_empty(pool: PgPool) {
     assert!(response.is_empty());
 }
 
-#[sqlx::test]
+#[sqlx::test(migrations = "../migrations")]
 async fn create_server_should_works(pool: PgPool) {
     // Arrange
     let app = TestApp::new(pool.clone()).await;
@@ -46,7 +46,7 @@ async fn create_server_should_works(pool: PgPool) {
     assert_eq!(server.vm_id.unwrap(), 101);
 }
 
-#[sqlx::test]
+#[sqlx::test(migrations = "../migrations")]
 async fn get_server_should_works(pool: PgPool) {
     // Arrange
     let app = TestApp::new(pool.clone()).await;
@@ -66,7 +66,7 @@ async fn get_server_should_works(pool: PgPool) {
     assert_eq!(server.status, ServerStatus::Stopped);
 }
 
-#[sqlx::test]
+#[sqlx::test(migrations = "../migrations")]
 async fn list_servers_should_works(pool: PgPool) {
     // Arrange
     let app = TestApp::new(pool.clone()).await;
@@ -90,7 +90,7 @@ async fn list_servers_should_works(pool: PgPool) {
     assert_eq!(servers[0].ip_address, server.ip_address);
 }
 
-#[sqlx::test]
+#[sqlx::test(migrations = "../migrations")]
 async fn server_action_should_works(pool: PgPool) {
     // Arrange
     let app = TestApp::new(pool.clone()).await;
@@ -118,7 +118,7 @@ async fn server_action_should_works(pool: PgPool) {
     assert_eq!(status_after, ServerStatus::Running);
 }
 
-#[sqlx::test]
+#[sqlx::test(migrations = "../migrations")]
 async fn delete_server_should_works(pool: PgPool) {
     // Arrange
     let app = TestApp::new(pool.clone()).await;

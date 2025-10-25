@@ -3,7 +3,7 @@ use crate::model::types::*;
 use crate::proxmox::types::VmRef;
 use crate::web::auth::password::hash;
 use crate::web::types::NewServerPayload;
-use common::error::{Error, Result};
+use dashboard_common::error::{Error, Result};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Executor, PgPool, PgTransaction, Postgres};
 use uuid::Uuid;
@@ -729,7 +729,7 @@ mod tests {
     use crate::model::types::Server;
     use crate::web::types::NewServerPayload;
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn update_password_should_works(pool: PgPool) {
         // Arrange
         let user = add_new_user(&pool, payload::test_user()).await.unwrap();
@@ -742,7 +742,7 @@ mod tests {
         assert!(bcrypt::verify(&new_password, &new_user.password).is_ok());
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn add_new_user_should_works(pool: PgPool) {
         // Arrange
         let test_user = payload::test_user();
@@ -752,7 +752,7 @@ mod tests {
         assert_eq!(new_user.email, test_user.email);
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn get_user_by_id_should_works(pool: PgPool) {
         // Arrange
         let test_user = payload::test_user();
@@ -763,7 +763,7 @@ mod tests {
         assert_eq!(found_user.id, new_user.id);
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn get_user_by_email_should_works(pool: PgPool) {
         // Arrange
         let test_user = payload::test_user();
@@ -774,7 +774,7 @@ mod tests {
         assert_eq!(found_user.email, new_user.email);
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn get_servers_for_user_should_works(pool: PgPool) {
         // Arrange
         let user = add_new_user(&pool, payload::test_user()).await.unwrap();
@@ -798,7 +798,7 @@ mod tests {
         assert_eq!(servers[0].server_id, server_id);
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn create_server_record_should_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -814,7 +814,7 @@ mod tests {
         tx.commit().await.unwrap();
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn reserve_ip_for_server_should_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -836,7 +836,7 @@ mod tests {
         tx.commit().await.unwrap();
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn create_service_record_should_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -861,7 +861,7 @@ mod tests {
         tx.commit().await.unwrap();
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn save_config_values_should_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -889,7 +889,7 @@ mod tests {
         tx.commit().await.unwrap();
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn save_custom_values_should_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -918,7 +918,7 @@ mod tests {
         tx.commit().await.unwrap();
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn update_initial_server_should_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -938,7 +938,7 @@ mod tests {
         tx.commit().await.unwrap();
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn find_template_id_should_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -952,7 +952,7 @@ mod tests {
         tx.commit().await.unwrap();
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn find_template_should_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -974,7 +974,7 @@ mod tests {
         tx.commit().await.unwrap();
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn update_service_status_should_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -1002,7 +1002,7 @@ mod tests {
         tx.commit().await.unwrap();
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn update_server_status_should_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -1024,7 +1024,7 @@ mod tests {
         tx.commit().await.unwrap();
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn get_server_by_id_should_works(pool: PgPool) {
         // Arrange
         let user = add_new_user(&pool, payload::test_user()).await.unwrap();
@@ -1047,7 +1047,7 @@ mod tests {
         assert_eq!(server.server_id, server_id);
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn delete_server_record_should_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -1067,7 +1067,7 @@ mod tests {
         tx.commit().await.unwrap();
     }
 
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn get_server_proxmox_ref_should_works(pool: PgPool) {
         // Arrange
         let user = add_new_user(&pool, payload::test_user()).await.unwrap();

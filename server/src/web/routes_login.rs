@@ -8,7 +8,7 @@ use crate::web::types::TokenResponse;
 use axum::extract::State;
 use axum::routing::post;
 use axum::{Json, Router};
-use common::error::{AuthError, Error, Result};
+use dashboard_common::error::{AuthError, Error, Result};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
