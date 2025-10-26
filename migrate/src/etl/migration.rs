@@ -1,4 +1,4 @@
-﻿//! This module is responsible for the "Extract" phase of the migration
+//! This module is responsible for the "Extract" phase of the migration
 //! pipeline with overall orchestration of the entire ETL migration process.
 //!
 //! The central `Migration` struct holds the application's state, including the
@@ -25,12 +25,13 @@ use uuid::Uuid;
 
 /// Holds the context and shared state for the entire migration process.
 ///
+#[derive(Debug, Clone)]
 pub struct Migration {
-    source_pool: MySqlPool,
-    target_pool: PgPool,
+    pub source_pool: MySqlPool,
+    pub target_pool: PgPool,
     dry_run: bool,
     chunk_size: usize,
-    statistic: HashMap<DashboardTable, u64>,
+    statistic: types::Statistic,
 }
 
 impl Migration {
@@ -56,7 +57,7 @@ impl Migration {
 
     /// Runs the complete, ordered migration process.
     ///
-    pub async fn run(&mut self) -> Result<()> {
+    pub async fn run(&mut self) -> Result<types::Statistic> {
         let mut transaction = self.target_pool.begin().await?;
         self.migrate_users(&mut transaction).await?;
         self.migrate_product_groups(&mut transaction).await?;
@@ -76,7 +77,8 @@ impl Migration {
             false => transaction.commit().await?,
         }
         tracing::info!(dry_run = %self.dry_run, statistic = ?self.statistic, "Migration completed.");
-        Ok(())
+
+        Ok(std::mem::take(&mut self.statistic))
     }
 
     /// Migrates active users from the WHMCS `tblclients` to the `users` table.

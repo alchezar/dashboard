@@ -21,5 +21,5 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     tracing::info!(?cli, "Cli arguments parsed.");
 
-    Migration::new(&cli).await?.run().await
+    Migration::new(&cli).await?.run().await.map(|_| ())
 }

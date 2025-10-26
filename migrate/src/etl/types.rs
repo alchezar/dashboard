@@ -6,8 +6,10 @@
 //! This includes parsing complex fields, converting types, and reshaping the
 //! data to fit the target schema before it is passed to the "Load" phase.
 
+/// Represents tables in the target database, used for logging and statistics.
+///
 #[allow(unused)]
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq)]
 pub enum DashboardTable {
     Users,
     ProductGroups,
@@ -48,9 +50,13 @@ impl std::fmt::Debug for DashboardTable {
     }
 }
 
+/// Represents the count of all changed fields per table.
+///
+pub type Statistic = std::collections::HashMap<DashboardTable, u64>;
+
 /// Represents all necessary fields from the client row in the `MySQL` database.
 ///
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Client {
     pub id: i32,
     pub firstname: String,
@@ -68,7 +74,7 @@ pub struct Client {
 /// Represents all necessary fields from the product group row in the `MySQL`
 /// database.
 ///
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct ProductGroup {
     pub id: i32,
     pub name: String,
@@ -86,7 +92,7 @@ impl ProductGroup {
 /// Represents all necessary fields from the product row in the `MySQL`
 /// database.
 ///
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Product {
     pub id: i32,
     pub gid: i32,
@@ -106,7 +112,7 @@ impl Product {
 /// Represents all necessary fields from the custom field row in the `MySQL`
 /// database.
 ///
-#[derive(sqlx::FromRow, Debug)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct CustomField {
     pub id: i32,
     pub fieldname: String,
@@ -126,7 +132,7 @@ impl CustomField {
 /// Represents all necessary fields from the configurable option row in the
 /// `MySQL` database.
 ///
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct ConfigOption {
     pub id: i32,
     pub optionname: String,
@@ -144,7 +150,7 @@ impl ConfigOption {
 /// Intermediate structure used before converting to the Dashboard's `Server`
 /// type.
 ///
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct VmRecord {
     pub id: u32,
     pub vmid: u32,
@@ -192,7 +198,7 @@ impl From<VmRecord> for Server {
 /// Represents all necessary fields from the network row in the `MySQL`
 /// database.
 ///
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Network {
     pub id: i32,
     pub title: String,
@@ -214,7 +220,7 @@ impl Network {
 /// Represents all necessary fields from the ip address row in the `MySQL`
 /// database.
 ///
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct IpAddress {
     pub id: i32,
     pub pool_id: i32,
@@ -236,7 +242,7 @@ impl IpAddress {
 /// Represents a custom field record from WHMCS's `tblcustomfields` table
 /// that defines a template.
 ///
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct TemplateField {
     pub relid: i32,
     pub fieldoptions: String,
@@ -283,7 +289,7 @@ impl TemplateField {
 
 /// Represents a service record fetched from WHMCS's `tblhosting` table.
 ///
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Service {
     pub id: i32,
     pub domainstatus: String,
@@ -305,7 +311,7 @@ impl Service {
 /// Represents a configurable option value record from WHMCS's
 /// `tblhostingconfigoptions` table.
 ///
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct ConfigValue {
     pub id: i32,
     pub relid: i32,
@@ -327,7 +333,7 @@ impl ConfigValue {
 /// Represents a custom field value record from WHMCS's `tblcustomfieldsvalues`
 /// table.
 ///
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow)]
 pub struct CustomValue {
     pub id: u32,
     pub fieldid: i32,

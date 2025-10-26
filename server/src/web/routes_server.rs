@@ -161,7 +161,7 @@ async fn create_server(
 /// [`ApiUser`].
 ///
 #[utoipa::path(
-    post,
+    get,
     path = "/servers/{id}",
     security(("bearer_auth" = [])),
     params(("id", Path, description = "Unique server ID")),
@@ -236,7 +236,7 @@ async fn delete_server(
 /// This handler always returns an `HTTP 202 Accepted`
 ///
 #[utoipa::path(
-    delete,
+    post,
     path = "/servers/{id}/actions",
     security(("bearer_auth" = [])),
     params(("id", Path, description = "Unique server ID")),

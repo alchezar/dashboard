@@ -1,5 +1,6 @@
 use dashboard::app::App;
 use dashboard::config::CONFIG;
+use dashboard::model::queries;
 use dashboard::proxmox::client::ProxmoxClient;
 use dashboard::state::AppState;
 use dashboard_common::error::Result;
@@ -19,7 +20,7 @@ async fn main() -> Result<()> {
     tracing::info!(target: "server", "Logger ready.");
 
     let app_state = AppState {
-        pool: dashboard::model::queries::connect_to_db().await?,
+        pool: queries::connect_to_db().await?,
         proxmox: Arc::new(ProxmoxClient::new(
             CONFIG.proxmox.url.clone(),
             CONFIG.proxmox.auth_header.clone(),

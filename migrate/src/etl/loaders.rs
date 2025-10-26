@@ -9,6 +9,7 @@
 //! transaction.
 
 use crate::etl::types;
+use dashboard_common::error::Result;
 use sqlx::PgTransaction;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -110,10 +111,7 @@ macro_rules! unnest_insert {
 ///
 /// On success, the number of affected rows.
 ///
-pub async fn insert_users(
-    tx: &mut PgTransaction<'_>,
-    clients: Vec<types::Client>,
-) -> dashboard_common::error::Result<u64> {
+pub async fn insert_users(tx: &mut PgTransaction<'_>, clients: Vec<types::Client>) -> Result<u64> {
     Ok(unnest_insert!(
         clients.into_iter() => users => tx,
         [
@@ -146,7 +144,7 @@ pub async fn insert_users(
 pub async fn insert_product_groups(
     tx: &mut PgTransaction<'_>,
     groups: Vec<types::ProductGroup>,
-) -> dashboard_common::error::Result<u64> {
+) -> Result<u64> {
     Ok(unnest_insert!(
         groups.into_iter() => product_groups => tx,
         [(1, name, name, text), (2, id, whmcs_id, int4)]
@@ -170,7 +168,7 @@ pub async fn insert_products(
     tx: &mut PgTransaction<'_>,
     products: Vec<types::Product>,
     group_id_map: &HashMap<i32, Uuid>,
-) -> dashboard_common::error::Result<u64> {
+) -> Result<u64> {
     #[rustfmt::skip]
     let fields_iter = products
         .into_iter()
@@ -210,7 +208,7 @@ pub async fn insert_custom_fields(
     tx: &mut PgTransaction<'_>,
     fields: Vec<types::CustomField>,
     product_id_map: &HashMap<i32, Uuid>,
-) -> dashboard_common::error::Result<u64> {
+) -> Result<u64> {
     #[rustfmt::skip]
     let fields_iter = fields
         .into_iter()
@@ -247,7 +245,7 @@ pub async fn insert_custom_fields(
 pub async fn insert_config_options(
     tx: &mut PgTransaction<'_>,
     options: Vec<types::ConfigOption>,
-) -> dashboard_common::error::Result<u64> {
+) -> Result<u64> {
     Ok(unnest_insert!(
         options.into_iter() => config_options => tx,
         [(1, optionname, name, text), (2, id, whmcs_id, int4)]
@@ -268,7 +266,7 @@ pub async fn insert_config_options(
 pub async fn insert_servers(
     tx: &mut PgTransaction<'_>,
     vm_records: Vec<types::VmRecord>,
-) -> dashboard_common::error::Result<u64> {
+) -> Result<u64> {
     let servers = vm_records
         .into_iter()
         .map(types::Server::from)
@@ -300,7 +298,7 @@ pub async fn insert_servers(
 pub async fn insert_networks(
     tx: &mut PgTransaction<'_>,
     networks: Vec<types::Network>,
-) -> dashboard_common::error::Result<u64> {
+) -> Result<u64> {
     Ok(unnest_insert!(
         networks.into_iter() => networks => tx,
         [
@@ -330,7 +328,7 @@ pub async fn insert_ip_addresses(
     address: Vec<types::IpAddress>,
     server_map: &HashMap<i32, Uuid>,
     network_map: &HashMap<i32, Uuid>,
-) -> dashboard_common::error::Result<u64> {
+) -> Result<u64> {
     let addresses_iter = address
         .into_iter()
         .filter_map(|field| match network_map.get(&field.pool_id) {
@@ -373,7 +371,7 @@ pub async fn insert_ip_addresses(
 pub async fn insert_templates(
     tx: &mut PgTransaction<'_>,
     temp_fields: Vec<types::TemplateField>,
-) -> dashboard_common::error::Result<u64> {
+) -> Result<u64> {
     let templates = temp_fields
         .into_iter()
         .flat_map(types::TemplateField::extract)
@@ -412,7 +410,7 @@ pub async fn insert_services(
     server_map: &HashMap<i32, Uuid>,
     product_map: &HashMap<i32, Uuid>,
     template_map: &HashMap<i32, Uuid>,
-) -> dashboard_common::error::Result<u64> {
+) -> Result<u64> {
     let iter = services.into_iter().filter_map(|service| {
         let user_uuid = *user_map.get(&service.userid)?;
         let product_uuid = *product_map.get(&service.packageid)?;
@@ -460,7 +458,7 @@ pub async fn insert_custom_values(
     values: Vec<types::CustomValue>,
     service_map: &HashMap<i32, Uuid>,
     custom_map: &HashMap<i32, Uuid>,
-) -> dashboard_common::error::Result<u64> {
+) -> Result<u64> {
     let iter = values.into_iter().filter_map(|value| {
         let service_uuid = *service_map.get(&value.relid)?;
         let config_uuid = *custom_map.get(&value.fieldid)?;
@@ -497,7 +495,7 @@ pub async fn insert_config_values(
     values: Vec<types::ConfigValue>,
     service_map: &HashMap<i32, Uuid>,
     config_map: &HashMap<i32, Uuid>,
-) -> dashboard_common::error::Result<u64> {
+) -> Result<u64> {
     let iter = values.into_iter().filter_map(|value| {
         let service_uuid = *service_map.get(&value.relid)?;
         let config_uuid = *config_map.get(&value.configid)?;

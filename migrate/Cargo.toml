@@ -27,3 +27,10 @@ features = [
 	"chrono",
 	"uuid",
 ]
+
+[dev-dependencies]
+criterion = { version = "0.7", features = ["async", "async_tokio"] }
+
+[[bench]]
+name = "benchmarks"
+harness = false
