@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nDELETE FROM servers\nWHERE id = $1\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "98e6704d95114d43f2cc4668d38d57c815d62da93eac1709aa4c3258c2a7914f"
+}
