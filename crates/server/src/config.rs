@@ -26,15 +26,16 @@ impl Config {
         dotenv::dotenv()?;
         tracing::info!(target: "config", ".env loaded.");
 
-        let config_dif = std::env::current_dir()?.join("../configuration");
+        let config_dir =
+            std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR")?).join("../configuration");
         let env_filename = (*std::env::var("APP_ENVIRONMENT")?)
             .try_into()
             .unwrap_or(Environment::Local)
             .as_filename();
 
         let config = config::Config::builder()
-            .add_source(config::File::from(config_dif.join("base.yaml")))
-            .add_source(config::File::from(config_dif.join(env_filename)))
+            .add_source(config::File::from(config_dir.join("base.yaml")))
+            .add_source(config::File::from(config_dir.join(env_filename)))
             .add_source(config::Environment::with_prefix("APP").separator("__"))
             .build()?
             .try_deserialize::<Config>()?;

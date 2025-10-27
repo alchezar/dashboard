@@ -1,7 +1,3 @@
 [workspace]
 resolver = "3"
-members = [
-	"common",
-	"server",
-	"migrate"
-]
+members = ["crates/*"]
