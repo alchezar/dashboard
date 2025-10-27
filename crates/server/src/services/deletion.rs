@@ -19,6 +19,15 @@ use uuid::Uuid;
 /// * `server_id`: ID of the server to delete.
 ///
 pub async fn run(app_state: AppState, user_id: Uuid, server_id: Uuid) {
+    // Immediately update the status to `Deleting.
+    let Ok(old_status) =
+        services::set_transient_status(&app_state.pool, user_id, server_id, ServerStatus::Deleting)
+            .await
+    else {
+        tracing::error!(target: "service", "Can't update server status to 'Deleting' state");
+        return;
+    };
+
     // Create a transaction for a chain of all sequential queries.
     let Ok(mut transaction) = app_state.pool.begin().await else {
         tracing::error!(target: "service", "Failed to begin transaction!");
@@ -26,8 +35,14 @@ pub async fn run(app_state: AppState, user_id: Uuid, server_id: Uuid) {
     };
 
     let result = delete_server(&app_state.proxmox, &mut transaction, user_id, server_id).await;
+    services::finalize_transaction(&result, transaction).await;
 
-    services::finalize_transaction(result, transaction).await;
+    // Return the old status if something went wrong.
+    if result.is_err() {
+        services::set_transient_status(&app_state.pool, user_id, server_id, old_status)
+            .await
+            .ok();
+    }
 }
 
 /// Core logic for server deletion, executed within a database transaction.
@@ -50,11 +65,8 @@ async fn delete_server(
     user_id: Uuid,
     server_id: Uuid,
 ) -> Result<()> {
-    // Check server and immediately update the status to transient.
     let vm = queries::get_server_proxmox_ref(&mut **transaction, user_id, server_id).await?;
     tracing::debug!(target: "service", ?vm, "Found server on Proxmox");
-    queries::update_server_status(&mut **transaction, server_id, ServerStatus::Deleting).await?;
-    tracing::debug!(target: "service", status = ?ServerStatus::Deleting, "Server status updated to transient state");
 
     // Delete Proxmox VM and wait until process finish.
     let upid = proxmox_client.delete(vm.clone()).await?;

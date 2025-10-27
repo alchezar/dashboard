@@ -27,7 +27,7 @@ pub async fn run(app_state: AppState, user_id: Uuid, payload: NewServerPayload) 
 
     let result = create_server(&app_state.proxmox, &mut transaction, user_id, &payload).await;
 
-    services::finalize_transaction(result, transaction).await;
+    services::finalize_transaction(&result, transaction).await;
 }
 
 /// Creates all initial database records for a new server within a transaction.

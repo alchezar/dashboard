@@ -30,6 +30,10 @@ impl ProxmoxClient {
     pub fn new(url: String, auth_header: String) -> Result<Self> {
         let client = Client::builder()
             .danger_accept_invalid_certs(true)
+            .danger_accept_invalid_hostnames(true)
+            .use_rustls_tls()
+            .tls_built_in_root_certs(false)
+            .min_tls_version(reqwest::tls::Version::TLS_1_0)
             .build()?;
 
         Ok(Self {

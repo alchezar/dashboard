@@ -7,7 +7,6 @@ use axum::{Router, middleware};
 use dashboard_common::error::Result;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
-use tower_http::cors::{Any, CorsLayer};
 use utoipa::OpenApi;
 use utoipa::openapi::security::{Http, HttpAuthScheme, SecurityScheme};
 use utoipa_swagger_ui::SwaggerUi;
@@ -39,7 +38,7 @@ impl App {
             .merge(SwaggerUi::new("/openapi").url("/api-docs/openapi.json", ApiDoc::openapi()))
             .with_state(app_state)
             .layer(middleware::map_response(mw::log_mapper))
-            .layer(CorsLayer::new().allow_origin(Any));
+            .layer(mw::allow_cors());
 
         Ok(Self {
             server: axum::serve(listener, router),

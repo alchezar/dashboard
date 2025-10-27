@@ -8,7 +8,6 @@
 
 /// Represents tables in the target database, used for logging and statistics.
 ///
-#[allow(unused)]
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub enum DashboardTable {
     Users,

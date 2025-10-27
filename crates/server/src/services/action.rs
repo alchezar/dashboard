@@ -20,9 +20,27 @@ use uuid::Uuid;
 /// * `action`: Specific action to perform.
 ///
 pub async fn run(app_state: AppState, user_id: Uuid, server_id: Uuid, action: ServerAction) {
+    // Find desired statuses and update the server to the transient one
+    // immediately.
+    let (transient_status, final_status) = match action {
+        ServerAction::Start => (ServerStatus::Starting, ServerStatus::Running),
+        ServerAction::Stop => (ServerStatus::Stopping, ServerStatus::Stopped),
+        ServerAction::Shutdown => (ServerStatus::ShuttingDown, ServerStatus::Stopped),
+        ServerAction::Reboot => (ServerStatus::Rebooting, ServerStatus::Running),
+    };
+    let Ok(old_status) =
+        services::set_transient_status(&app_state.pool, user_id, server_id, transient_status).await
+    else {
+        tracing::error!(target: "service", status = ?transient_status, "Can't update server status to transient state");
+        return;
+    };
+
     // Create a transaction for a chain of all sequential queries.
     let Ok(mut transaction) = app_state.pool.begin().await else {
         tracing::error!(target: "service", "Failed to begin transaction!");
+        services::set_transient_status(&app_state.pool, user_id, server_id, old_status)
+            .await
+            .ok();
         return;
     };
 
@@ -32,10 +50,19 @@ pub async fn run(app_state: AppState, user_id: Uuid, server_id: Uuid, action: Se
         user_id,
         server_id,
         action,
+        final_status,
     )
     .await;
 
-    services::finalize_transaction(result, transaction).await;
+    services::finalize_transaction(&result, transaction).await;
+
+    // Return the old status if something went wrong.
+    if result.is_err() {
+        tracing::error!(target: "service", status = ?old_status, "Action failed, reverting status");
+        services::set_transient_status(&app_state.pool, user_id, server_id, old_status)
+            .await
+            .ok();
+    }
 }
 
 /// Core logic for a server action, executed within a database transaction.
@@ -59,21 +86,12 @@ async fn start_action(
     user_id: Uuid,
     server_id: Uuid,
     action: ServerAction,
+    final_status: ServerStatus,
 ) -> Result<()> {
     // Check server.
-    let vm = queries::get_server_proxmox_ref(&mut **transaction, user_id, server_id).await?;
+    let vm = queries::get_server_proxmox_ref(transaction.as_mut(), user_id, server_id).await?;
     let node = vm.node.clone();
     tracing::debug!(target: "service", ?vm, "Found server on Proxmox");
-
-    // Immediately update the status to transient.
-    let (transient_status, final_status) = match action {
-        ServerAction::Start => (ServerStatus::Starting, ServerStatus::Running),
-        ServerAction::Stop => (ServerStatus::Stopping, ServerStatus::Stopped),
-        ServerAction::Shutdown => (ServerStatus::ShuttingDown, ServerStatus::Stopped),
-        ServerAction::Reboot => (ServerStatus::Rebooting, ServerStatus::Running),
-    };
-    queries::update_server_status(&mut **transaction, server_id, transient_status).await?;
-    tracing::debug!(target: "service", status = ?transient_status, "Server status updated to transient state");
 
     // Start the action and update the status again once it's done.
     let upid = match action {
@@ -88,7 +106,7 @@ async fn start_action(
     services::wait_until_finish(proxmox_client, task, 1, None).await?;
     tracing::info!(target: "service", "Proxmox task finished successfully");
 
-    queries::update_server_status(&mut **transaction, server_id, final_status).await?;
+    queries::update_server_status(transaction.as_mut(), server_id, final_status).await?;
 
     Ok(())
 }

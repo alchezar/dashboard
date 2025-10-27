@@ -1,9 +1,12 @@
-﻿use crate::proxmox::Proxmox;
+﻿use crate::model::queries;
+use crate::model::types::ServerStatus;
+use crate::proxmox::Proxmox;
 use crate::proxmox::types::{TaskRef, TaskStatus};
 use dashboard_common::error::{Error, Result};
-use sqlx::PgTransaction;
+use sqlx::{PgPool, PgTransaction};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use uuid::Uuid;
 
 pub mod action;
 pub mod deletion;
@@ -50,6 +53,39 @@ pub async fn wait_until_finish(
     Ok(())
 }
 
+/// Sets a server's status to a transient state and commits the change
+/// immediately.
+///
+/// # Arguments
+///
+/// * `pool`: Database connection pool.
+/// * `user_id`: ID of the user who owns the server.
+/// * `server_id`: ID of the target server.
+/// * `new_status`: New transient status to set.
+///
+/// # Returns
+///
+/// The old server status on success.
+///
+pub async fn set_transient_status(
+    pool: &PgPool,
+    user_id: Uuid,
+    server_id: Uuid,
+    new_status: ServerStatus,
+) -> Result<ServerStatus> {
+    let mut transaction = pool.begin().await?;
+
+    let old_status = queries::get_server_by_id(transaction.as_mut(), user_id, server_id)
+        .await?
+        .status;
+    queries::update_server_status(transaction.as_mut(), server_id, new_status).await?;
+
+    transaction.commit().await?;
+
+    tracing::debug!(target: "service", status = ?new_status, "Server status updated");
+    Ok(old_status)
+}
+
 /// Finalizes a database transaction by committing on success or rolling back on
 /// error.
 ///
@@ -59,7 +95,7 @@ pub async fn wait_until_finish(
 ///   transaction.
 /// * `transaction`: Database transaction to be finalized.
 ///
-pub async fn finalize_transaction(service_result: Result<()>, transaction: PgTransaction<'_>) {
+pub async fn finalize_transaction(service_result: &Result<()>, transaction: PgTransaction<'_>) {
     match service_result {
         Ok(_) => match transaction.commit().await {
             Ok(_) => tracing::info!(target: "service", "Service completed"),

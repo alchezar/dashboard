@@ -27,7 +27,7 @@ impl Config {
         tracing::info!(target: "config", ".env loaded.");
 
         let config_dir =
-            std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR")?).join("../configuration");
+            std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR")?).join("../../configuration");
         let env_filename = (*std::env::var("APP_ENVIRONMENT")?)
             .try_into()
             .unwrap_or(Environment::Local)

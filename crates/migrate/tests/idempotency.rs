@@ -32,7 +32,7 @@ async fn setup_migration(pool: PgPool) -> Migration {
 
     // Change target pool to the test one.
     migration.target_pool = pool;
-    sqlx::migrate!("../migrations")
+    sqlx::migrate!("../../migrations")
         .run(&migration.target_pool)
         .await
         .unwrap();

@@ -1,11 +1,10 @@
-use dashboard::app::App;
-use dashboard::config::CONFIG;
-use dashboard::model::queries;
-use dashboard::proxmox::client::ProxmoxClient;
-use dashboard::state::AppState;
 use dashboard_common::error::Result;
 use dashboard_common::telemetry;
-use dashboard_server as dashboard;
+use dashboard_server::app::App;
+use dashboard_server::config::CONFIG;
+use dashboard_server::model::queries;
+use dashboard_server::proxmox::client::ProxmoxClient;
+use dashboard_server::state::AppState;
 use std::sync::Arc;
 use tracing::Level;
 

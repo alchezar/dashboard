@@ -2,7 +2,7 @@
 use dashboard_server::web::types::TokenResponse;
 use sqlx::PgPool;
 
-#[sqlx::test(migrations = "../migrations")]
+#[sqlx::test(migrations = "../../migrations")]
 async fn should_register(pool: PgPool) {
     // Arrange
     let app = TestApp::new(pool).await;
@@ -18,7 +18,7 @@ async fn should_register(pool: PgPool) {
     assert!(!payload.result.token.is_empty());
 }
 
-#[sqlx::test(migrations = "../migrations")]
+#[sqlx::test(migrations = "../../migrations")]
 async fn should_login(pool: PgPool) {
     // Arrange
     let app = TestApp::new(pool).await;

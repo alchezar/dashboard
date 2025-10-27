@@ -2,7 +2,7 @@
 use dashboard_server::web::types::{TokenPayload, UserResponse};
 use sqlx::PgPool;
 
-#[sqlx::test(migrations = "../migrations")]
+#[sqlx::test(migrations = "../../migrations")]
 async fn should_get_user(pool: PgPool) {
     // Arrange
     let app = TestApp::new(pool).await;

@@ -526,7 +526,7 @@ mod tests {
     use crate::etl::types::ProductGroup;
     use sqlx::PgPool;
 
-    #[sqlx::test(migrations = "../migrations")]
+    #[sqlx::test(migrations = "../../migrations")]
     async fn insert_users_works(pool: PgPool) {
         // Arrange
         let clients = vec![types::Client {
@@ -557,7 +557,7 @@ mod tests {
         assert_eq!(user.email, "john.doe@example.com");
     }
 
-    #[sqlx::test(migrations = "../migrations")]
+    #[sqlx::test(migrations = "../../migrations")]
     async fn test_insert_product_groups(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -585,7 +585,7 @@ mod tests {
         assert_eq!(inserted_groups[1].name, "Group2");
     }
 
-    #[sqlx::test(migrations = "../migrations")]
+    #[sqlx::test(migrations = "../../migrations")]
     async fn insert_products_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -613,7 +613,7 @@ mod tests {
         assert_eq!(all_products[0].group_id, group_map[&1]);
     }
 
-    #[sqlx::test(migrations = "../migrations")]
+    #[sqlx::test(migrations = "../../migrations")]
     async fn insert_custom_fields_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -642,7 +642,7 @@ mod tests {
         assert_eq!(all_fields[0].product_id, product_map[&1]);
     }
 
-    #[sqlx::test(migrations = "../migrations")]
+    #[sqlx::test(migrations = "../../migrations")]
     async fn insert_config_options_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -671,7 +671,7 @@ mod tests {
         assert_eq!(inserted_options[1].name, "RAM");
     }
 
-    #[sqlx::test(migrations = "../migrations")]
+    #[sqlx::test(migrations = "../../migrations")]
     async fn insert_servers_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -707,7 +707,7 @@ mod tests {
         assert_eq!(servers[1].status, "suspended");
     }
 
-    #[sqlx::test(migrations = "../migrations")]
+    #[sqlx::test(migrations = "../../migrations")]
     async fn insert_networks_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -741,7 +741,7 @@ mod tests {
         assert_eq!(inserted_networks[1].subnet_mask, "255.0.0.0");
     }
 
-    #[sqlx::test(migrations = "../migrations")]
+    #[sqlx::test(migrations = "../../migrations")]
     async fn insert_ip_addresses_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -778,7 +778,7 @@ mod tests {
         assert_eq!(inserted_ips[1].server_id, None);
     }
 
-    #[sqlx::test(migrations = "../migrations")]
+    #[sqlx::test(migrations = "../../migrations")]
     async fn insert_templates_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -814,7 +814,7 @@ mod tests {
         assert_eq!(templates[2].template_vmid, 9002);
     }
 
-    #[sqlx::test(migrations = "../migrations")]
+    #[sqlx::test(migrations = "../../migrations")]
     async fn insert_services_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -862,7 +862,7 @@ mod tests {
         assert_eq!(inserted_services[1].template_id, template_map[&2]);
     }
 
-    #[sqlx::test(migrations = "../migrations")]
+    #[sqlx::test(migrations = "../../migrations")]
     async fn insert_custom_values_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
@@ -911,7 +911,7 @@ mod tests {
         assert_eq!(inserted_values[1].custom_field_id, custom_map[&11]);
     }
 
-    #[sqlx::test(migrations = "../migrations")]
+    #[sqlx::test(migrations = "../../migrations")]
     async fn insert_config_values_works(pool: PgPool) {
         // Arrange
         let mut tx = pool.begin().await.unwrap();

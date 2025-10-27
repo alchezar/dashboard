@@ -1,10 +1,11 @@
 use crate::web::auth::token;
 use axum::body::Body;
-use axum::http::Request;
-use axum::http::header::AUTHORIZATION;
+use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
+use axum::http::{HeaderValue, Method, Request};
 use axum::middleware::Next;
 use axum::response::Response;
 use dashboard_common::error::{AuthError, Error, Result};
+use tower_http::cors::CorsLayer;
 
 /// A middleware to print a blank line after each response.
 ///
@@ -42,4 +43,14 @@ pub async fn require_auth(mut request: Request<Body>, next: Next) -> Result<Resp
     request.extensions_mut().insert(claims);
 
     Ok(next.run(request).await)
+}
+
+/// Configures CORS to allow requests from the local frontend during
+/// development.
+///
+pub fn allow_cors() -> CorsLayer {
+    CorsLayer::new()
+        .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::OPTIONS])
+        .allow_headers([CONTENT_TYPE, AUTHORIZATION])
 }

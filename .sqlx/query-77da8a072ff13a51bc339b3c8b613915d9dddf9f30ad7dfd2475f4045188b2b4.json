@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nINSERT INTO custom_fields (product_id, name)\nVALUES ($1, 'os'), ($1, 'datacenter')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "77da8a072ff13a51bc339b3c8b613915d9dddf9f30ad7dfd2475f4045188b2b4"
+}
