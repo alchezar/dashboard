@@ -203,3 +203,26 @@ impl IpConfig {
         ))
     }
 }
+
+/// Represents a product that is safe to expose to the public API.
+///
+#[derive(Debug, Serialize, Deserialize, FromRow, ToSchema)]
+pub struct ApiProduct {
+    pub id: Uuid,
+    pub name: String,
+}
+
+/// Represents a configurable option value that is safe to expose to the public
+/// API.
+///
+#[derive(Debug, Serialize, Deserialize, FromRow, ToSchema)]
+pub struct ApiConfigValue {
+    pub value: String,
+}
+
+/// Represents a custom field value that is safe to expose to the public API.
+///
+#[derive(Debug, Serialize, Deserialize, FromRow, ToSchema)]
+pub struct ApiCustomValue {
+    pub value: Option<String>,
+}

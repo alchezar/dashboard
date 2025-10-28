@@ -727,6 +727,86 @@ WHERE svc.user_id = $1 AND srv.id = $2
     }
 }
 
+/// Retrieves all available products.
+///
+/// # Arguments
+///
+/// * `pool`: Reference to the `PgPool`.
+///
+/// # Returns
+///
+/// `Vec<ApiProduct>` containing the list of products.
+///
+pub async fn get_products(pool: &PgPool) -> Result<Vec<ApiProduct>> {
+    Ok(sqlx::query_as!(
+        ApiProduct,
+        r#"
+SELECT id, name
+FROM products
+        "#
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+/// Retrieves all available values for a specific configurable option.
+///
+/// # Arguments
+///
+/// * `pool`: Reference to the `PgPool`.
+///
+/// # Returns
+///
+/// `Vec<ApiConfigValue>` containing the list of configurable option values.
+///
+pub async fn get_config_option_value(
+    pool: &PgPool,
+    option_name: &str,
+) -> Result<Vec<ApiConfigValue>> {
+    Ok(sqlx::query_as!(
+        ApiConfigValue,
+        r#"
+SELECT DISTINCT v.value
+FROM config_values v
+JOIN config_options o ON v.config_id = o.id
+WHERE o.name = $1
+ORDER BY value
+        "#,
+        option_name,
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+/// Retrieves all available values for a specific custom field.
+///
+/// # Arguments
+///
+/// * `pool`: Reference to the `PgPool`.
+///
+/// # Returns
+///
+/// `Vec<ApiCustomValue>` containing the list of custom field values.
+///
+pub async fn get_custom_field_value(
+    pool: &PgPool,
+    field_name: &str,
+) -> Result<Vec<ApiCustomValue>> {
+    Ok(sqlx::query_as!(
+        ApiCustomValue,
+        r#"
+SELECT DISTINCT split_part(v.value, '|', 1) as "value"
+FROM custom_values v
+JOIN custom_fields f ON v.custom_field_id = f.id
+WHERE f.name = $1
+ORDER BY value
+        "#,
+        field_name,
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
 // -----------------------------------------------------------------------------
 
 #[cfg(test)]

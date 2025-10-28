@@ -36,6 +36,7 @@ pub fn routes() -> Router<AppState> {
     post,
     path = "/register",
     request_body = NewUser,
+    tags = ["Login"],
     responses(
         (status = 200, body = TokenResponse, description = "User registration completed"),
         (status = 500, body = String, description = "Internal server error")
@@ -79,6 +80,7 @@ async fn register(
     post,
     path = "/login",
     request_body = LoginPayload,
+    tags = ["Login"],
     responses(
         (status = 200, body = TokenResponse, description = "User login completed"),
         (status = 401, body = String, description = "Unauthorized"),

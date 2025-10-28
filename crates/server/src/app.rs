@@ -1,7 +1,8 @@
 ﻿use crate::model;
 use crate::state::AppState;
 use crate::web::middleware as mw;
-use crate::web::{self, routes_login, routes_server};
+use crate::web::routes::{catalog, login, server};
+use crate::web::{self};
 use axum::serve::Serve;
 use axum::{Router, middleware};
 use dashboard_common::error::Result;
@@ -33,8 +34,9 @@ impl App {
     pub async fn build(app_state: AppState, address: SocketAddr) -> Result<Self> {
         let listener = TcpListener::bind(&address).await?;
         let router = Router::new()
-            .merge(routes_login::routes())
-            .merge(routes_server::routes())
+            .merge(login::routes())
+            .merge(server::routes())
+            .merge(catalog::routes())
             .merge(SwaggerUi::new("/openapi").url("/api-docs/openapi.json", ApiDoc::openapi()))
             .with_state(app_state)
             .layer(middleware::map_response(mw::log_mapper))
@@ -69,15 +71,25 @@ impl App {
 ///
 #[derive(utoipa::OpenApi)]
 #[openapi(
+    tags(
+        (name = "Login", description = "User authentication endpoints"),
+        (name = "Server", description = "Server management endpoints"),
+        (name = "Catalog", description = "Frontend helper endpoints")
+    ),
     paths(
-        routes_login::login,
-        routes_login::register,
-        routes_server::get_user,
-        routes_server::list_servers,
-        routes_server::create_server,
-        routes_server::get_server,
-        routes_server::delete_server,
-        routes_server::server_action,
+        login::login,
+        login::register,
+        server::get_user,
+        server::list_servers,
+        server::create_server,
+        server::get_server,
+        server::delete_server,
+        server::server_action,
+        catalog::list_products,
+        catalog::list_cpu_options,
+        catalog::list_ram_options,
+        catalog::list_os_options,
+        catalog::list_datacenter_options,
     ),
     components(schemas(
         model::types::NewUser,

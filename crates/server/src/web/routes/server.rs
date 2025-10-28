@@ -45,6 +45,7 @@ pub fn routes() -> Router<AppState> {
     get,
     path = "/user/me",
     security(("bearer_auth" = [])),
+    tags = ["Server"],
     responses(
         (status = 200, body = UserResponse, description = "User found"),
         (status = 401, body = String, description = "Unauthorized"),
@@ -85,6 +86,7 @@ async fn get_user(
 #[utoipa::path(
     get,
     path = "/servers",
+    tags = ["Server"],
     security(("bearer_auth" = [])),
     responses(
         (status = 200, body = Response<Vec<ApiServer>>, description = "Servers found"),
@@ -127,6 +129,7 @@ async fn list_servers(
 #[utoipa::path(
     post,
     path = "/servers",
+    tags = ["Server"],
     security(("bearer_auth" = [])),
     responses(
         (status = 202, description = "Server creation accepted"),
@@ -163,6 +166,7 @@ async fn create_server(
 #[utoipa::path(
     get,
     path = "/servers/{id}",
+    tags = ["Server"],
     security(("bearer_auth" = [])),
     params(("id", Path, description = "Unique server ID")),
     responses(
@@ -201,6 +205,7 @@ async fn get_server(
 #[utoipa::path(
     delete,
     path = "/servers/{id}",
+    tags = ["Server"],
     security(("bearer_auth" = [])),
     params(("id", Path, description = "Unique server ID")),
     responses(
@@ -238,6 +243,7 @@ async fn delete_server(
 #[utoipa::path(
     post,
     path = "/servers/{id}/actions",
+    tags = ["Server"],
     security(("bearer_auth" = [])),
     params(("id", Path, description = "Unique server ID")),
     request_body = ServerActionPayload,
