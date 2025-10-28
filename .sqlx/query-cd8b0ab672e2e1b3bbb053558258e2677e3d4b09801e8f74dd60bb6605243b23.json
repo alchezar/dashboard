@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT DISTINCT v.value\nFROM config_values v\nJOIN config_options o ON v.config_id = o.id\nWHERE o.name = $1\nORDER BY value\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cd8b0ab672e2e1b3bbb053558258e2677e3d4b09801e8f74dd60bb6605243b23"
+}

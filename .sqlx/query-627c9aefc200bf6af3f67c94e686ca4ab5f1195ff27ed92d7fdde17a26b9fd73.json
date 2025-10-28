@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT DISTINCT split_part(v.value, '|', 1) as \"value\"\nFROM custom_values v\nJOIN custom_fields f ON v.custom_field_id = f.id\nWHERE f.name = $1\nORDER BY value\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "627c9aefc200bf6af3f67c94e686ca4ab5f1195ff27ed92d7fdde17a26b9fd73"
+}
