@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# chmod +x scripts/benchmark_api.sh
-# ./scripts/benchmark_api.sh
-
 # --- API Throughput Benchmark Script ---
 
 API_URL="http://127.0.0.1:8080"

@@ -30,7 +30,12 @@ features = [
 
 [dev-dependencies]
 criterion = { version = "0.7", features = ["async", "async_tokio"] }
+dhat = "0.3"
 
 [[bench]]
 name = "benchmarks"
+harness = false
+
+[[bench]]
+name = "memory"
 harness = false

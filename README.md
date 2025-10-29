@@ -1,5 +1,7 @@
 # Project: Full-Stack Proxmox Management Platform in Rust & React
 
+[![Dashboard Demo Video](https://img.youtube.com/vi/Vh1982DUWyc/0.jpg)](https://www.youtube.com/watch?v=Vh1982DUWyc)
+
 ### Objective
 
 Build a complete WHMCS replacement: a Rust API orchestrating Proxmox VE, a React dashboard for server management, and a migration utility to transfer legacy data.
@@ -88,7 +90,7 @@ This stack includes the technologies explicitly mentioned and those implicitly r
 
 * **Docker & Docker Compose:** For creating a reproducible local development environment that includes the WHMCS testbed, PostgreSQL, and the new Rust API.
 * **Cargo:** Rust's build system and package manager.
-* **Git & GitHub/GitLab:** For version control.
+* **Git & GitHub:** For version control.
 * **`sqlx-cli`:** A command-line utility for managing database migrations (creating, applying, reverting).
 * **Mocking:** Using traits and dependency injection to mock external services (`ProxmoxClient`) for testing. Crates like `wiremock` are common.
 * **Background Worker Pattern:** A design pattern for offloading long-running tasks (like server provisioning) from the main API request-response cycle.
@@ -126,4 +128,59 @@ This translates the technology stack into the practical skills needed to execute
 * **Test-Driven Development (TDD):** A strong discipline for writing unit tests for critical business logic (especially the data transformation rules) and integration tests for API endpoints.
 * **Mocking & Dependency Injection:** The ability to design code using traits to decouple components, allowing for external services (like a hypervisor API) to be mocked during testing.
 * **Structured Logging:** Skill in using the `tracing` library to produce meaningful, structured logs that are essential for debugging a distributed or asynchronous system.
-* **Professional Benchmarking:** Expertise in designing, implementing, and analyzing comprehensive performance benchmarks for API endpoints, database operations, and full-system workflows including statistical analysis of performance trends and regression detection.
+* This project is a full-stack server management platform designed to replace the core functionality of WHMCS. It features a Rust-based API for orchestrating a Proxmox VE instance and an interactive React frontend.
+
+---
+
+### Benchmarking and Profiling
+
+This project includes a suite of benchmarks to measure performance and memory efficiency.
+
+#### Migration Utility
+
+**Execution Time (Criterion)**
+
+To measure the speed of the data migration process, run the standard Criterion benchmarks. This will generate an HTML report in `dashboard/target/criterion/report/index.html`.
+
+```bash
+cargo bench --bench benchmarks
+```
+
+**Memory Efficiency (DHAT)**
+
+To profile the heap memory usage during the migration, run the custom `memory` benchmark. This will also create a report in `dashboard/target/dhat-heap.json` file for detailed analysis with `dhat-viewer`.
+
+```bash
+cargo bench --bench memory
+```
+
+#### API Server
+
+Before running the benchmarks for the first time, make the scripts executable:
+
+```bash
+chmod +x scripts/benchmark_api.sh
+chmod +x scripts/profile_memory.sh
+```
+
+**API Throughput (Oha)**
+
+The `benchmark_api.sh` script uses `oha` to measure request throughput for key API endpoints against a running server.
+
+```bash
+./scripts/benchmark_api.sh
+```
+
+**Memory Usage (Valgrind/Massif)**
+
+This process requires two terminal tabs running concurrently.
+
+```bash
+# In tab 1, start the server under the memory profiler
+./scripts/profile_memory.sh
+# In tab 2, while the profiler is running, execute the load test to generate traffic
+./scripts/benchmark_api.sh
+# When the load test is finished, stop the profiler in **Tab 1** by pressing `Ctrl+C`
+# Analyze the generated memory report located at `dashboard/target/massif.out`
+ms_print target/massif.out
+```
