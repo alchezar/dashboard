@@ -3,7 +3,8 @@ use crate::model::types::*;
 use crate::proxmox::types::VmRef;
 use crate::web::auth::password::hash;
 use crate::web::types::NewServerPayload;
-use dashboard_common::error::{Error, Result};
+use dashboard_common::prelude::{Error, Result};
+use secrecy::ExposeSecret;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Executor, PgPool, PgTransaction, Postgres};
 use uuid::Uuid;
@@ -100,7 +101,7 @@ RETURNING
         new_user.post_code,
         new_user.country,
         new_user.phone_number,
-        hash(&new_user.plain_password)?
+        hash(&new_user.plain_password.expose_secret())?
     )
     .fetch_one(pool)
     .await?
@@ -233,7 +234,7 @@ WHERE svc.user_id = $1
 /// # Arguments
 ///
 /// * `transaction`: Mutable reference to a `PgTransaction`.
-/// * `payload`: `NewServerPayload` containing details for the new server.
+/// * `host_name`: Name of the new host.
 ///
 /// # Returns
 ///
@@ -241,7 +242,7 @@ WHERE svc.user_id = $1
 ///
 pub async fn create_server_record(
     transaction: &mut PgTransaction<'_>,
-    payload: &NewServerPayload,
+    host_name: &str,
 ) -> Result<Uuid> {
     let record = sqlx::query!(
         r#"
@@ -249,7 +250,7 @@ INSERT INTO servers (host_name, status)
 VALUES ($1, $2)
 RETURNING id
         "#,
-        payload.host_name,
+        host_name,
         ServerStatus::SettingUp.to_string(),
     )
     .fetch_one(&mut **transaction)
@@ -264,7 +265,7 @@ RETURNING id
 ///
 /// * `transaction`: Mutable reference to a `PgTransaction`.
 /// * `server_id`: UUID of the server to assign the IP to.
-/// * `payload`: `NewServerPayload` containing the datacenter information.
+/// * `datacenter`: Datacenter location name.
 ///
 /// # Returns
 ///
@@ -273,7 +274,7 @@ RETURNING id
 pub async fn reserve_ip_for_server(
     transaction: &mut PgTransaction<'_>,
     server_id: Uuid,
-    payload: &NewServerPayload,
+    datacenter: &str,
 ) -> Result<IpConfig> {
     // Find available IP address.
     let network_details = sqlx::query!(
@@ -289,7 +290,7 @@ WHERE ip.server_id IS NULL AND n.datacenter_name = $1
 LIMIT 1
 FOR UPDATE SKIP LOCKED
 		"#,
-        payload.datacenter,
+        datacenter,
     )
     .fetch_one(&mut **transaction)
     .await?;
@@ -814,6 +815,7 @@ mod tests {
     use super::*;
     use crate::model::types::Server;
     use crate::web::types::NewServerPayload;
+    use secrecy::ExposeSecret;
 
     #[sqlx::test(migrations = "../../migrations")]
     async fn update_password_should_works(pool: PgPool) {
@@ -825,7 +827,7 @@ mod tests {
         update_password(&pool, &user.id, &new_hash).await.unwrap();
         // Assert
         let new_user = get_user_by_email(&pool, &user.email).await.unwrap();
-        assert!(bcrypt::verify(&new_password, &new_user.password).is_ok());
+        assert!(bcrypt::verify(&new_password, &new_user.password.expose_secret()).is_ok());
     }
 
     #[sqlx::test(migrations = "../../migrations")]
@@ -867,7 +869,9 @@ mod tests {
         let mut tx = pool.begin().await.unwrap();
         let product_id = helpers::test_product(&mut tx).await;
         let payload = payload::test_server(Some(product_id));
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
         let template_id = helpers::test_template_id(&mut tx).await;
         create_service_record(&mut tx, user.id, server_id, template_id, &payload)
             .await
@@ -891,7 +895,9 @@ mod tests {
         let payload = payload::test_server(None);
 
         // Act
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
 
         // Assert
         let server = helpers::test_get_server(&mut tx, server_id).await.unwrap();
@@ -906,12 +912,14 @@ mod tests {
         let mut tx = pool.begin().await.unwrap();
         let product_id = helpers::test_product(&mut tx).await;
         let payload = payload::test_server(Some(product_id));
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
         let network_id = helpers::test_network_id(&mut tx).await;
         let ip_id = helpers::test_ip_id(&mut tx, None, network_id).await;
 
         // Act
-        let ip_config = reserve_ip_for_server(&mut tx, server_id, &payload)
+        let ip_config = reserve_ip_for_server(&mut tx, server_id, &payload.datacenter)
             .await
             .unwrap();
 
@@ -929,7 +937,9 @@ mod tests {
         let user = add_new_user(&pool, payload::test_user()).await.unwrap();
         let product_id = helpers::test_product(&mut tx).await;
         let payload = payload::test_server(Some(product_id));
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
         let template_id = helpers::test_template_id(&mut tx).await;
 
         // Act
@@ -954,7 +964,9 @@ mod tests {
         let user = add_new_user(&pool, payload::test_user()).await.unwrap();
         let product_id = helpers::test_product(&mut tx).await;
         let payload = payload::test_server(Some(product_id));
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
         let template_id = helpers::test_template_id(&mut tx).await;
         let service_id = create_service_record(&mut tx, user.id, server_id, template_id, &payload)
             .await
@@ -982,7 +994,9 @@ mod tests {
         let user = add_new_user(&pool, payload::test_user()).await.unwrap();
         let product_id = helpers::test_product(&mut tx).await;
         let payload = payload::test_server(Some(product_id));
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
         let template_id = helpers::test_template_id(&mut tx).await;
         let service_id = create_service_record(&mut tx, user.id, server_id, template_id, &payload)
             .await
@@ -1009,7 +1023,9 @@ mod tests {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
         let payload = payload::test_server(None);
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
         let vm_ref = VmRef::new("test-node", 123);
 
         // Act
@@ -1045,7 +1061,9 @@ mod tests {
         let user = add_new_user(&pool, payload::test_user()).await.unwrap();
         let product_id = helpers::test_product(&mut tx).await;
         let payload = payload::test_server(Some(product_id));
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
         let template_id = helpers::test_template_id(&mut tx).await;
         let service_id = create_service_record(&mut tx, user.id, server_id, template_id, &payload)
             .await
@@ -1067,7 +1085,9 @@ mod tests {
         let user = add_new_user(&pool, payload::test_user()).await.unwrap();
         let product_id = helpers::test_product(&mut tx).await;
         let payload = payload::test_server(Some(product_id));
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
         let template_id = helpers::test_template_id(&mut tx).await;
         let service_id = create_service_record(&mut tx, user.id, server_id, template_id, &payload)
             .await
@@ -1093,7 +1113,9 @@ mod tests {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
         let payload = payload::test_server(None);
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
         let new_status = ServerStatus::Stopped;
 
         // Act
@@ -1117,7 +1139,9 @@ mod tests {
         let mut tx = pool.begin().await.unwrap();
         let product_id = helpers::test_product(&mut tx).await;
         let payload = payload::test_server(Some(product_id));
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
         let template_id = helpers::test_template_id(&mut tx).await;
         create_service_record(&mut tx, user.id, server_id, template_id, &payload)
             .await
@@ -1138,7 +1162,9 @@ mod tests {
         // Arrange
         let mut tx = pool.begin().await.unwrap();
         let payload = payload::test_server(None);
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
         let network_id = helpers::test_network_id(&mut tx).await;
         let ip_id = helpers::test_ip_id(&mut tx, Some(server_id), network_id).await;
 
@@ -1160,7 +1186,9 @@ mod tests {
         let mut tx = pool.begin().await.unwrap();
         let product_id = helpers::test_product(&mut tx).await;
         let payload = payload::test_server(Some(product_id));
-        let server_id = create_server_record(&mut tx, &payload).await.unwrap();
+        let server_id = create_server_record(&mut tx, &payload.host_name)
+            .await
+            .unwrap();
         let template_id = helpers::test_template_id(&mut tx).await;
         create_service_record(&mut tx, user.id, server_id, template_id, &payload)
             .await
@@ -1198,7 +1226,7 @@ mod tests {
                 post_code: "12345".to_owned(),
                 country: "USA".to_owned(),
                 phone_number: "555-1234".to_owned(),
-                plain_password: "secure_password_123".to_owned(),
+                plain_password: "secure_password_123".into(),
             }
         }
 

@@ -13,9 +13,10 @@
 use crate::cli::Cli;
 use crate::etl::loaders;
 use crate::etl::types::{self, DashboardTable};
-use dashboard_common::error::Result;
+use dashboard_common::prelude::Result;
 use futures::StreamExt;
 use futures::stream::TryStreamExt;
+use secrecy::ExposeSecret;
 use sqlx::mysql::MySqlPoolOptions;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{MySqlPool, PgPool, PgTransaction, Row};
@@ -42,9 +43,13 @@ impl Migration {
     /// * `cli`: Parsed command-line arguments.
     ///
     pub async fn new(cli: &Cli) -> Result<Self> {
-        let source_pool = MySqlPoolOptions::new().connect(&cli.source_url).await?;
-        let target_pool = PgPoolOptions::new().connect(&cli.target_url).await?;
-        tracing::info!(?cli.source_url, ?cli.target_url, "Database pools created.");
+        let source_pool = MySqlPoolOptions::new()
+            .connect(cli.source_url.expose_secret())
+            .await?;
+        let target_pool = PgPoolOptions::new()
+            .connect(cli.target_url.expose_secret())
+            .await?;
+        tracing::info!("Database pools created.");
 
         Ok(Self {
             source_pool,
@@ -540,7 +545,7 @@ impl Migration {
         }
 
         drop(chunks);
-        tracing::debug!("{} migration completed.", table);
+        tracing::debug!(?table, "Migration completed.");
         self.collect_statistics(total_affected, table);
 
         Ok(())

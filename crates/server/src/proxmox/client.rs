@@ -1,9 +1,10 @@
 ﻿use crate::proxmox::Proxmox;
 use crate::proxmox::types::*;
 use async_trait::async_trait;
-use dashboard_common::error::{Error, ProxmoxError, Result};
+use dashboard_common::prelude::{Error, ProxmoxError, Result};
 use reqwest::Client;
 use reqwest::header::AUTHORIZATION;
+use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -16,7 +17,7 @@ use std::collections::HashMap;
 pub struct ProxmoxClient {
     client: Client,
     url: String,
-    auth_header: String,
+    auth_header: SecretString,
 }
 
 impl ProxmoxClient {
@@ -27,7 +28,7 @@ impl ProxmoxClient {
     /// * `url`: URL of the Proxmox API.
     /// * `auth_header`: The full, pre-formatted authorization header string.
     ///
-    pub fn new(url: String, auth_header: String) -> Result<Self> {
+    pub fn new(url: String, auth_header: SecretString) -> Result<Self> {
         let client = Client::builder()
             .danger_accept_invalid_certs(true)
             .danger_accept_invalid_hostnames(true)
@@ -59,7 +60,7 @@ impl ProxmoxClient {
         let response = self
             .client
             .post(url)
-            .header(AUTHORIZATION, &self.auth_header)
+            .header(AUTHORIZATION, self.auth_header.expose_secret())
             .send()
             .await?;
         match response.status() {
@@ -97,7 +98,7 @@ impl ProxmoxClient {
         let response = self
             .client
             .get(url)
-            .header(AUTHORIZATION, &self.auth_header)
+            .header(AUTHORIZATION, self.auth_header.expose_secret())
             .send()
             .await?;
         match response.status() {
@@ -155,7 +156,7 @@ impl Proxmox for ProxmoxClient {
         let response = self
             .client
             .post(&url)
-            .header(AUTHORIZATION, &self.auth_header)
+            .header(AUTHORIZATION, self.auth_header.expose_secret())
             .form(&params)
             .send()
             .await?;
@@ -176,7 +177,7 @@ impl Proxmox for ProxmoxClient {
         let response = self
             .client
             .delete(&url)
-            .header(AUTHORIZATION, &self.auth_header)
+            .header(AUTHORIZATION, self.auth_header.expose_secret())
             .send()
             .await?;
         match response.status() {
@@ -195,7 +196,7 @@ impl Proxmox for ProxmoxClient {
         let response = self
             .client
             .post(&url)
-            .header(AUTHORIZATION, &self.auth_header)
+            .header(AUTHORIZATION, self.auth_header.expose_secret())
             .form(&config)
             .send()
             .await?;

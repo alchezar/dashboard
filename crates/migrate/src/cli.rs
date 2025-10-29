@@ -1,6 +1,7 @@
-﻿use serde::{Deserialize, Serialize};
+﻿use secrecy::SecretString;
+use serde::Deserialize;
 
-#[derive(Debug, Serialize, Deserialize, clap::Parser)]
+#[derive(Debug, Deserialize, clap::Parser)]
 #[command(
     name = "Migration Utility",
     version = "0.1.0",
@@ -22,12 +23,12 @@ pub struct Cli {
         help = "Source database URL (WHMCS MySQL)",
         env = "SOURCE_URL"
     )]
-    pub source_url: String,
+    pub source_url: SecretString,
     #[arg(
         short,
         long,
         help = "Target database URL (PostgreSQL)",
         env = "TARGET_URL"
     )]
-    pub target_url: String,
+    pub target_url: SecretString,
 }

@@ -1,4 +1,4 @@
-use dashboard_common::error::Result;
+use dashboard_common::prelude::Result;
 use dashboard_common::telemetry;
 use dashboard_server::app::App;
 use dashboard_server::config::CONFIG;

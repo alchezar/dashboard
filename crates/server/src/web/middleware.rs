@@ -4,7 +4,7 @@ use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
 use axum::http::{HeaderValue, Method, Request};
 use axum::middleware::Next;
 use axum::response::Response;
-use dashboard_common::error::{AuthError, Error, Result};
+use dashboard_common::prelude::{AuthError, Error, Result};
 use tower_http::cors::CorsLayer;
 
 /// A middleware to print a blank line after each response.

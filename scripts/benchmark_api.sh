@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # --- API Throughput Benchmark Script ---
+# This script performs load testing using the OHA utility.
 
 API_URL="http://127.0.0.1:8080"
 USERNAME="john.smith@example.com"

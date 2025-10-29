@@ -5,7 +5,7 @@ pub mod types;
 
 use crate::proxmox::types::*;
 use async_trait::async_trait;
-use dashboard_common::error::Result;
+use dashboard_common::prelude::Result;
 
 /// An abstract interface for interacting with the Proxmox VE API.
 ///

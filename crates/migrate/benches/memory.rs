@@ -15,8 +15,8 @@ fn main() {
         Migration::new(&Cli {
             dry_run: true,
             chunk_size: 1024,
-            source_url: std::env::var("SOURCE_URL").unwrap(),
-            target_url: std::env::var("TARGET_URL").unwrap(),
+            source_url: std::env::var("SOURCE_URL").unwrap().into(),
+            target_url: std::env::var("TARGET_URL").unwrap().into(),
         })
         .await
         .unwrap()

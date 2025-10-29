@@ -1,5 +1,5 @@
 ﻿use crate::web::types::NewServerPayload;
-use dashboard_common::error::{Error, Result};
+use dashboard_common::prelude::{Error, Result};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::{Deserialize, Serialize};
 

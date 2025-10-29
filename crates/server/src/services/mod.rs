@@ -2,7 +2,7 @@
 use crate::model::types::ServerStatus;
 use crate::proxmox::Proxmox;
 use crate::proxmox::types::{TaskRef, TaskStatus};
-use dashboard_common::error::{Error, Result};
+use dashboard_common::prelude::{Error, Result};
 use sqlx::{PgPool, PgTransaction};
 use std::sync::Arc;
 use std::time::{Duration, Instant};

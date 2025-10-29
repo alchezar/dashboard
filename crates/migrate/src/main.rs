@@ -1,5 +1,5 @@
 ﻿use clap::Parser;
-use dashboard_common::error::Result;
+use dashboard_common::prelude::Result;
 use dashboard_common::telemetry;
 use migration_utility::cli::Cli;
 use migration_utility::etl::migration::Migration;

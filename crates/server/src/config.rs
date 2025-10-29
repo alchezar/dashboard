@@ -1,4 +1,5 @@
-use dashboard_common::error::{Error, Result};
+use dashboard_common::prelude::{Error, Result};
+use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::LazyLock;
@@ -28,10 +29,7 @@ impl Config {
 
         let config_dir =
             std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR")?).join("../../configuration");
-        let env_filename = (*std::env::var("APP_ENVIRONMENT")?)
-            .try_into()
-            .unwrap_or(Environment::Local)
-            .as_filename();
+        let env_filename = Environment::from(&*std::env::var("APP_ENVIRONMENT")?).as_filename();
 
         let config = config::Config::builder()
             .add_source(config::File::from(config_dir.join("base.yaml")))
@@ -61,6 +59,7 @@ impl Config {
         self.application.get_address()
     }
 }
+
 // -----------------------------------------------------------------------------
 
 /// Configuration, specific to the application server.
@@ -92,7 +91,7 @@ pub struct Database {
     host: String,
     port: u16,
     username: String,
-    password: String,
+    password: SecretString,
     database_name: String,
 }
 
@@ -102,7 +101,11 @@ impl Database {
     pub fn get_url(&self) -> String {
         format!(
             "postgres://{}:{}@{}:{}/{}",
-            self.username, self.password, self.host, self.port, self.database_name
+            self.username,
+            self.password.expose_secret(),
+            self.host,
+            self.port,
+            self.database_name
         )
     }
 }
@@ -113,7 +116,7 @@ impl Database {
 ///
 #[derive(Debug, Deserialize)]
 pub struct TokenEnv {
-    pub secret: String,
+    pub secret: SecretString,
     pub duration_sec: u64,
 }
 
@@ -122,7 +125,7 @@ pub struct TokenEnv {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ProxmoxEnv {
     pub url: String,
-    pub auth_header: String,
+    pub auth_header: SecretString,
 }
 
 // -----------------------------------------------------------------------------
@@ -145,14 +148,12 @@ impl Environment {
     }
 }
 
-impl TryFrom<&str> for Environment {
-    type Error = Error;
-    fn try_from(value: &str) -> Result<Self> {
+impl From<&str> for Environment {
+    fn from(value: &str) -> Self {
         match value.to_lowercase().as_str() {
-            "local" => Ok(Self::Local),
-            "prod" => Ok(Self::Production),
-            "production" => Ok(Self::Production),
-            other => Err(Error::NotSupported(other.to_owned())),
+            "local" => Self::Local,
+            "prod" | "production" => Self::Production,
+            _ => Self::Local,
         }
     }
 }

@@ -8,7 +8,8 @@ use crate::web::types::TokenResponse;
 use axum::extract::State;
 use axum::routing::post;
 use axum::{Json, Router};
-use dashboard_common::error::{AuthError, Error, Result};
+use dashboard_common::prelude::{AuthError, Error, Result};
+use secrecy::ExposeSecret;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -98,7 +99,10 @@ async fn login(
         .await
         .map_err(|_| Error::Auth(AuthError::Login))?;
 
-    let (hash, pass) = (&user.password, &payload.password);
+    let (hash, pass) = (
+        user.password.expose_secret(),
+        payload.password.expose_secret(),
+    );
     if hash.starts_with("$2y$10$") {
         // Rehash old WHMCS passwords immediately, without confirmation email.
         bcrypt::verify(pass, hash).map_err(|_| Error::Auth(AuthError::Login))?;

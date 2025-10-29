@@ -5,7 +5,7 @@ use crate::proxmox::types::{TaskRef, VmConfig, VmRef};
 use crate::services;
 use crate::state::AppState;
 use crate::web::types::NewServerPayload;
-use dashboard_common::error::Result;
+use dashboard_common::prelude::Result;
 use sqlx::PgTransaction;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -53,7 +53,7 @@ async fn create_server(
 ) -> Result<()> {
     // Create initial server.
 
-    let server_id = queries::create_server_record(transaction, payload).await?;
+    let server_id = queries::create_server_record(transaction, &payload.host_name).await?;
     tracing::info!(target: "service", %server_id, "Initial server record created");
 
     let template_id = queries::find_template_id(transaction, &payload.os).await?;
@@ -66,7 +66,8 @@ async fn create_server(
     queries::save_custom_values(transaction, service_id, payload).await?;
     tracing::info!(target: "service", "Custom field and configurable option records created");
 
-    let ip_config = queries::reserve_ip_for_server(transaction, server_id, payload).await?;
+    let ip_config =
+        queries::reserve_ip_for_server(transaction, server_id, &payload.datacenter).await?;
     let vm_config = VmConfig::new(ip_config.form()?, payload.cpu_cores, payload.ram_gb);
     tracing::info!(target: "service", %server_id, %service_id, "IP and VM config created");
 

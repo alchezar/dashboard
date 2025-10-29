@@ -69,7 +69,6 @@ pub struct Client {
     pub phonenumber: String,
     pub password: String,
 }
-
 /// Represents all necessary fields from the product group row in the `MySQL`
 /// database.
 ///
@@ -398,6 +397,7 @@ mod tests {
 
     #[test]
     fn vm_record_into_server_without_node_works() {
+        // Arrange
         let vm_record = VmRecord {
             id: 2,
             vmid: 102,
@@ -405,8 +405,9 @@ mod tests {
             hostname: "server2.test.com".to_string(),
             status: "Suspended".to_string(),
         };
+        // Act
         let server: Server = vm_record.into();
-
+        // Assert
         assert_eq!(server.id, 2);
         assert_eq!(server.vmid, 102);
         assert_eq!(server.node, "pve");

@@ -6,13 +6,13 @@ use crate::services::{action, deletion, setup};
 use crate::state::AppState;
 use crate::web::auth::Claims;
 use crate::web::middleware as mw;
-use crate::web::types::{NewServerPayload, Response, ServerActionPayload, UserResponse};
+use crate::web::types::*;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Extension, Json};
 use axum::{Router, middleware};
-use dashboard_common::error::Result;
+use dashboard_common::prelude::Result;
 use uuid::Uuid;
 
 pub fn routes() -> Router<AppState> {
@@ -61,7 +61,7 @@ async fn get_user(
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<UserResponse>> {
     let user = queries::get_user_by_id(&app_state.pool, claims.user_id).await?;
-    tracing::info!(target: "handler", "Found user: email={}", user.email);
+    tracing::info!(target: "handler", email = user.email, "Found user");
 
     Ok(Json(Response::new(user)))
 }
@@ -103,7 +103,7 @@ async fn list_servers(
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<Response<Vec<ApiServer>>>> {
     let servers = queries::get_servers_for_user(&app_state.pool, claims.user_id).await?;
-    tracing::info!(target: "handler", "Found {} servers", servers.len());
+    tracing::info!(target: "handler", count = servers.len(), "Found servers");
 
     Ok(Json(Response::new(servers)))
 }

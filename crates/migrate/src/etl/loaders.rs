@@ -9,7 +9,7 @@
 //! transaction.
 
 use crate::etl::types;
-use dashboard_common::error::Result;
+use dashboard_common::prelude::Result;
 use sqlx::PgTransaction;
 use std::collections::HashMap;
 use uuid::Uuid;

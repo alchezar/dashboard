@@ -1,3 +1,4 @@
+use dashboard_common::prelude::{AuthError, Error, Result};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -11,7 +12,7 @@ pub struct Claims {
 }
 
 pub mod password {
-    use dashboard_common::error::{AuthError, Error, Result};
+    use super::*;
     use rand::Rng;
 
     /// Hashes a password using Argon2.
@@ -50,11 +51,12 @@ pub mod password {
 }
 
 pub mod token {
+    use super::*;
     use crate::config::CONFIG;
     use crate::web::auth::Claims;
     use chrono::{Duration, Utc};
-    use dashboard_common::error::{AuthError, Error, Result};
     use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+    use secrecy::ExposeSecret;
     use uuid::Uuid;
 
     /// Creates a new JWT for a given user.
@@ -78,7 +80,7 @@ pub mod token {
         let token = encode(
             &header,
             &claims,
-            &EncodingKey::from_secret(CONFIG.token.secret.as_bytes()),
+            &EncodingKey::from_secret(CONFIG.token.secret.expose_secret().as_bytes()),
         )
         .map_err(|_| Error::Auth(AuthError::Token))?;
 
@@ -96,7 +98,7 @@ pub mod token {
     /// `Claims` contained within the token.
     ///
     pub fn validate(token: &str) -> Result<Claims> {
-        let decoding_key = DecodingKey::from_secret(CONFIG.token.secret.as_bytes());
+        let decoding_key = DecodingKey::from_secret(CONFIG.token.secret.expose_secret().as_bytes());
         let validation = Validation::default();
 
         decode::<Claims>(token, &decoding_key, &validation)

@@ -6,7 +6,7 @@ use crate::web::types::Response;
 use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router, middleware};
-use dashboard_common::error::Result;
+use dashboard_common::prelude::Result;
 
 pub fn routes() -> Router<AppState> {
     Router::new()

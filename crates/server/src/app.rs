@@ -5,7 +5,7 @@ use crate::web::routes::{catalog, login, server};
 use crate::web::{self};
 use axum::serve::Serve;
 use axum::{Router, middleware};
-use dashboard_common::error::Result;
+use dashboard_common::prelude::Result;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use utoipa::OpenApi;

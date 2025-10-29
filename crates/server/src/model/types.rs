@@ -1,10 +1,12 @@
 use chrono::{DateTime, Utc};
-use dashboard_common::error::Result;
+use dashboard_common::prelude::Result;
 use derive_more::Display;
+use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use std::net::Ipv4Addr;
 use utoipa::ToSchema;
+use utoipa::schema;
 use uuid::Uuid;
 
 /// Represents a user row in the database, including the password hash.
@@ -21,7 +23,7 @@ pub struct DbUser {
     pub post_code: String,
     pub country: String,
     pub phone_number: String,
-    pub password: String,
+    pub password: SecretString,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
 }
@@ -56,7 +58,8 @@ pub struct NewUser {
     pub country: String,
     pub phone_number: String,
     #[serde(rename = "password")]
-    pub plain_password: String,
+    #[schema(value_type = String)]
+    pub plain_password: SecretString,
 }
 
 impl From<DbUser> for ApiUser {
@@ -81,7 +84,8 @@ impl From<DbUser> for ApiUser {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct LoginPayload {
     pub email: String,
-    pub password: String,
+    #[schema(value_type = String)]
+    pub password: SecretString,
 }
 
 // -----------------------------------------------------------------------------
