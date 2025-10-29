@@ -1,6 +1,7 @@
+use axum::http::{HeaderName, HeaderValue, Method};
 use dashboard_common::prelude::{Error, Result};
 use secrecy::{ExposeSecret, SecretString};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::LazyLock;
 
@@ -18,6 +19,7 @@ pub struct Config {
     database: Database,
     pub token: TokenEnv,
     pub proxmox: ProxmoxEnv,
+    pub cors: Cors,
 }
 
 impl Config {
@@ -38,11 +40,7 @@ impl Config {
             .build()?
             .try_deserialize::<Config>()?;
 
-        tracing::info!(
-            target: "config",
-            application = ?config.application,
-            database = ?config.database,
-            "Configuration loaded.");
+        tracing::info!( target: "config", ?config, "Configuration loaded.");
 
         Ok(config)
     }
@@ -132,6 +130,8 @@ pub struct ProxmoxEnv {
 
 /// Represents the different environments the application can run in.
 ///
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Environment {
     Local,
     Production,
@@ -140,20 +140,78 @@ pub enum Environment {
 impl Environment {
     /// Returns the filename for the environment-specific configuration file.
     ///
-    pub fn as_filename(&self) -> &'static str {
-        match self {
-            Environment::Local => "local.yaml",
-            Environment::Production => "prod.yaml",
-        }
+    pub fn as_filename(&self) -> String {
+        serde_json::to_string(self)
+            .expect("Environment should always serialize successfully")
+            .trim_matches('"')
+            .to_owned()
+            + ".yaml"
     }
 }
 
 impl From<&str> for Environment {
     fn from(value: &str) -> Self {
-        match value.to_lowercase().as_str() {
-            "local" => Self::Local,
-            "prod" | "production" => Self::Production,
-            _ => Self::Local,
+        match serde_json::from_str::<Self>(value) {
+            Ok(environment) => environment,
+            Err(error) => {
+                tracing::warn!(target: "config", value, ?error, "Incorrect environment format. Use either `local` or `production`.");
+                Self::Local
+            }
         }
+    }
+}
+
+// -----------------------------------------------------------------------------
+
+/// Configuration for Cross-Origin Resource Sharing (CORS).
+///
+#[derive(Debug, Clone, Deserialize)]
+pub struct Cors {
+    origin: String,
+    methods: String,
+    headers: String,
+}
+
+impl Cors {
+    /// Parses the configured origin string into an `axum::http::HeaderValue`.
+    /// If the origin string cannot be parsed, it defaults to an "empty"
+    /// `HeaderValue`.
+    ///
+    /// # Returns
+    ///
+    /// `HeaderValue` representing the allowed origin.
+    ///
+    pub fn allow_origin(&self) -> HeaderValue {
+        self.origin.parse().unwrap_or(HeaderValue::from_static(""))
+    }
+
+    /// Parses the comma-separated methods string into a vector of
+    /// `axum::http::Method`. Each method string is trimmed and parsed. Invalid
+    /// method strings are ignored.
+    ///
+    /// # Returns
+    ///
+    /// `Vec<Method>` containing the allowed HTTP methods.
+    ///
+    pub fn allow_methods(&self) -> Vec<Method> {
+        self.methods
+            .split(',')
+            .filter_map(|method| method.trim().parse().ok())
+            .collect()
+    }
+
+    /// Parses the comma-separated headers string into a vector of
+    /// `axum::http::HeaderName`. Each header string is trimmed and parsed.
+    /// Invalid header strings are ignored.
+    ///
+    /// # Returns
+    ///
+    /// `Vec<HeaderName>` containing the allowed HTTP headers.
+    ///
+    pub fn allow_headers(&self) -> Vec<HeaderName> {
+        self.headers
+            .split(',')
+            .filter_map(|header| header.trim().parse().ok())
+            .collect()
     }
 }

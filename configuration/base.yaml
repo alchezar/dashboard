@@ -7,3 +7,7 @@ database:
   username: postgres
   password: postgres
   database_name: postgres
+cors:
+  origin: http://localhost:5173
+  methods: OPTIONS,POST,GET
+  headers: CONTENT_TYPE, AUTHORIZATION

@@ -1,7 +1,8 @@
+use crate::config::CONFIG;
 use crate::web::auth::token;
 use axum::body::Body;
-use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
-use axum::http::{HeaderValue, Method, Request};
+use axum::http::Request;
+use axum::http::header::AUTHORIZATION;
 use axum::middleware::Next;
 use axum::response::Response;
 use dashboard_common::prelude::{AuthError, Error, Result};
@@ -49,8 +50,9 @@ pub async fn require_auth(mut request: Request<Body>, next: Next) -> Result<Resp
 /// development.
 ///
 pub fn allow_cors() -> CorsLayer {
+    let cors = &CONFIG.cors;
     CorsLayer::new()
-        .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
-        .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::OPTIONS])
-        .allow_headers([CONTENT_TYPE, AUTHORIZATION])
+        .allow_origin(cors.allow_origin())
+        .allow_methods(cors.allow_methods())
+        .allow_headers(cors.allow_headers())
 }
