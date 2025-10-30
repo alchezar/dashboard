@@ -2,7 +2,7 @@
 use crate::model::types::{ApiConfigValue, ApiCustomValue, ApiProduct};
 use crate::state::AppState;
 use crate::web::middleware as mw;
-use crate::web::types::Response;
+use crate::web::types::{RequiredConfigOption, RequiredCustomField, Response};
 use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router, middleware};
@@ -75,7 +75,8 @@ async fn list_products(
 async fn list_cpu_options(
     State(app_state): State<AppState>,
 ) -> Result<Json<Response<Vec<ApiConfigValue>>>> {
-    let options = queries::get_config_option_value(&app_state.pool, "CPU").await?;
+    let options =
+        queries::get_config_option_value(&app_state.pool, RequiredConfigOption::CPU).await?;
     tracing::info!(target: "handler", count = options.len(), "Found CPU options");
 
     Ok(Json(Response::new(options)))
@@ -106,7 +107,8 @@ async fn list_cpu_options(
 async fn list_ram_options(
     State(app_state): State<AppState>,
 ) -> Result<Json<Response<Vec<ApiConfigValue>>>> {
-    let options = queries::get_config_option_value(&app_state.pool, "RAM").await?;
+    let options =
+        queries::get_config_option_value(&app_state.pool, RequiredConfigOption::RAM).await?;
     tracing::info!(target: "handler", count = options.len(), "Found RAM options");
 
     Ok(Json(Response::new(options)))
@@ -137,7 +139,8 @@ async fn list_ram_options(
 async fn list_os_options(
     State(app_state): State<AppState>,
 ) -> Result<Json<Response<Vec<ApiCustomValue>>>> {
-    let options = queries::get_custom_field_value(&app_state.pool, "OS Template").await?;
+    let options =
+        queries::get_custom_field_value(&app_state.pool, RequiredCustomField::OsTemplate).await?;
     tracing::info!(target: "handler", count = options.len(), "Found OS options");
 
     Ok(Json(Response::new(options)))
@@ -168,7 +171,8 @@ async fn list_os_options(
 async fn list_datacenter_options(
     State(app_state): State<AppState>,
 ) -> Result<Json<Response<Vec<ApiCustomValue>>>> {
-    let options = queries::get_custom_field_value(&app_state.pool, "Datacenter Location").await?;
+    let options =
+        queries::get_custom_field_value(&app_state.pool, RequiredCustomField::Datacenter).await?;
     tracing::info!(target: "handler", count = options.len(), "Found Datacenter options");
 
     Ok(Json(Response::new(options)))

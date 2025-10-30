@@ -2,7 +2,7 @@ use crate::config::CONFIG;
 use crate::model::types::*;
 use crate::proxmox::types::VmRef;
 use crate::web::auth::password::hash;
-use crate::web::types::NewServerPayload;
+use crate::web::types::{NewServerPayload, RequiredConfigOption, RequiredCustomField};
 use dashboard_common::prelude::{Error, Result};
 use secrecy::ExposeSecret;
 use sqlx::postgres::PgPoolOptions;
@@ -762,8 +762,9 @@ FROM products
 ///
 pub async fn get_config_option_value(
     pool: &PgPool,
-    option_name: &str,
+    option: RequiredConfigOption,
 ) -> Result<Vec<ApiConfigValue>> {
+    tracing::warn!(option = option.to_string(), "!!!!!");
     Ok(sqlx::query_as!(
         ApiConfigValue,
         r#"
@@ -773,7 +774,7 @@ JOIN config_options o ON v.config_id = o.id
 WHERE o.name = $1
 ORDER BY value
         "#,
-        option_name,
+        option.to_string(),
     )
     .fetch_all(pool)
     .await?)
@@ -791,8 +792,9 @@ ORDER BY value
 ///
 pub async fn get_custom_field_value(
     pool: &PgPool,
-    field_name: &str,
+    field: RequiredCustomField,
 ) -> Result<Vec<ApiCustomValue>> {
+    tracing::warn!(field = field.to_string(), "!!!!!");
     Ok(sqlx::query_as!(
         ApiCustomValue,
         r#"
@@ -802,7 +804,7 @@ JOIN custom_fields f ON v.custom_field_id = f.id
 WHERE f.name = $1
 ORDER BY value
         "#,
-        field_name,
+        field.to_string(),
     )
     .fetch_all(pool)
     .await?)

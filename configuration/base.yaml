@@ -10,4 +10,4 @@ database:
 cors:
   origin: http://localhost:5173
   methods: OPTIONS,POST,GET
-  headers: CONTENT_TYPE, AUTHORIZATION
+  headers: content-type, authorization
