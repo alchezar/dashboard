@@ -8,7 +8,7 @@ use std::sync::LazyLock;
 /// Global lazily-initialized application [`Config`].
 ///
 pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
-    Config::from_env().unwrap_or_else(|error| panic!("== Failed to load config: {:?}!", error))
+    Config::from_env().unwrap_or_else(|error| panic!("Failed to load config: {:?}!", error))
 });
 
 /// Represents the application's configuration.

@@ -23,6 +23,8 @@ pub enum Error {
     Auth(AuthError),
     #[error("Proxmox API error: {0} failed: status {1}, body: {2}")]
     Proxmox(ProxmoxError, reqwest::StatusCode, String),
+    #[error("Header convert error: {0}")]
+    Header(#[from] axum::http::header::InvalidHeaderValue),
 
     #[error("Environment error: {0}")]
     Environment(#[from] dotenv::Error),
