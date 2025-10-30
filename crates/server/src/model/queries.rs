@@ -35,7 +35,7 @@ pub async fn connect_to_db() -> Result<PgPool> {
 ///
 /// Empty `Ok(())` on success.
 ///
-pub async fn update_password(pool: &PgPool, user_id: &Uuid, new_hash: &str) -> Result<()> {
+pub async fn update_password_hash(pool: &PgPool, user_id: &Uuid, new_hash: &str) -> Result<()> {
     sqlx::query!(
         r#"
 UPDATE users SET password = $2
@@ -764,7 +764,6 @@ pub async fn get_config_option_value(
     pool: &PgPool,
     option: RequiredConfigOption,
 ) -> Result<Vec<ApiConfigValue>> {
-    tracing::warn!(option = option.to_string(), "!!!!!");
     Ok(sqlx::query_as!(
         ApiConfigValue,
         r#"
@@ -794,7 +793,6 @@ pub async fn get_custom_field_value(
     pool: &PgPool,
     field: RequiredCustomField,
 ) -> Result<Vec<ApiCustomValue>> {
-    tracing::warn!(field = field.to_string(), "!!!!!");
     Ok(sqlx::query_as!(
         ApiCustomValue,
         r#"
@@ -826,7 +824,9 @@ mod tests {
         let new_password = "new_secure_password";
         let new_hash = bcrypt::hash(&new_password, 10).unwrap();
         // Act
-        update_password(&pool, &user.id, &new_hash).await.unwrap();
+        update_password_hash(&pool, &user.id, &new_hash)
+            .await
+            .unwrap();
         // Assert
         let new_user = get_user_by_email(&pool, &user.email).await.unwrap();
         assert!(bcrypt::verify(&new_password, &new_user.password.expose_secret()).is_ok());

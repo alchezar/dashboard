@@ -107,7 +107,7 @@ async fn login(
         // Rehash old WHMCS passwords immediately, without confirmation email.
         bcrypt::verify(pass, hash).map_err(|_| Error::Auth(AuthError::Login))?;
         let new_hash = password::hash(pass)?;
-        queries::update_password(&app_state.pool, &user.id, &new_hash).await?;
+        queries::update_password_hash(&app_state.pool, &user.id, &new_hash).await?;
         tracing::info!(target: "handler", user_id = %user.id, "Old password hash updated");
     } else {
         password::verify(hash, pass)?;
