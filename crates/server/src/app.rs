@@ -47,13 +47,31 @@ impl App {
         })
     }
 
-    /// Runs the application server.
+    /// Runs the application server with graceful shutdown support.
     ///
     /// This method consumes the `App` instance and starts the server, which
     /// will run until it is shut down or an error occurs.
     ///
+    /// # Returns
+    ///
+    /// Empty `Ok(())` on success.
+    ///
     pub async fn run(self) -> Result<()> {
-        self.server.await.map_err(Into::into)
+        // Future that completes when the server should begin graceful shutdown.
+        // When the shutdown signal is received, the server stops accepting new
+        // connections and waits for active requests to complete before shutting
+        // down.
+        let shutdown_signal = async {
+            tokio::signal::ctrl_c()
+                .await
+                .expect("Failed to listen for Ctrl+C");
+            tracing::info!("Shutting signal received.");
+        };
+
+        self.server
+            .with_graceful_shutdown(shutdown_signal)
+            .await
+            .map_err(Into::into)
     }
 
     /// Returns the public URL of the application.
