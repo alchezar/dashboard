@@ -20,8 +20,5 @@ CREATE TABLE users
     whmcs_id     INT UNIQUE
 );
 
--- Create index on email for faster lookups
-CREATE INDEX idx_users_email ON users (email);
-
 -- Create index on phone number
 CREATE INDEX idx_users_phone_number ON users (phone_number);

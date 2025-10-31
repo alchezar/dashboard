@@ -1,13 +1,17 @@
 #!/bin/bash
 
+set -a
+source .env
+set +a
+
 # --- API Throughput Benchmark Script ---
 # This script performs load testing using the OHA utility.
 
-API_URL="http://127.0.0.1:8080"
-USERNAME="john.smith@example.com"
-PASSWORD="password"
+API_URL="${BENCH_URL}"
+USERNAME="${BENCH_USER}"
+PASSWORD="${BENCH_PASS}"
 
-echo "Getting JWT token for $USERNAME..."
+echo "Getting JWT token for $USERNAME ..."
 
 # Login request
 TOKEN=$(curl -s -X POST \

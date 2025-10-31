@@ -5,9 +5,9 @@
     container_name: dashboard_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: dashboard_db
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${DASHBOARD_DB_NAME}
+      POSTGRES_USER: ${DASHBOARD_DB_USER}
+      POSTGRES_PASSWORD: ${DASHBOARD_DB_PASS}
     ports:
       - "5434:5432"
     volumes:

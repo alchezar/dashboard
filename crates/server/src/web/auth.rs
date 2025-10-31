@@ -1,4 +1,3 @@
-use dashboard_common::prelude::{AuthError, Error, Result};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -12,7 +11,7 @@ pub struct Claims {
 }
 
 pub mod password {
-    use super::*;
+    use dashboard_common::prelude::{AuthError, Error, Result};
     use rand::Rng;
 
     /// Hashes a password using Argon2.
@@ -51,10 +50,10 @@ pub mod password {
 }
 
 pub mod token {
-    use super::*;
     use crate::config::CONFIG;
     use crate::web::auth::Claims;
     use chrono::{Duration, Utc};
+    use dashboard_common::prelude::{AuthError, Error, Result};
     use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
     use secrecy::ExposeSecret;
     use uuid::Uuid;
