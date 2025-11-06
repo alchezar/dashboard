@@ -1,22 +1,16 @@
 use axum::http::{HeaderName, HeaderValue, Method};
-use dashboard_common::prelude::{Error, Result};
+use dashboard_common::prelude::Result;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
-use std::net::{SocketAddr, ToSocketAddrs};
-use std::sync::LazyLock;
-
-/// Global lazily-initialized application [`Config`].
-///
-pub static CONFIG: LazyLock<Config> = LazyLock::new(|| {
-    Config::from_env().unwrap_or_else(|error| panic!("Failed to load config: {:?}!", error))
-});
+use sqlx::postgres::PgConnectOptions;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 /// Represents the application's configuration.
 ///
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Config {
-    application: Application,
-    database: Database,
+    pub application: SocketAddr,
+    pub database: Database,
     pub token: TokenEnv,
     pub proxmox: ProxmoxEnv,
     pub cors: Cors,
@@ -29,8 +23,7 @@ impl Config {
         dotenv::dotenv()?;
         tracing::info!(target: "config", ".env loaded.");
 
-        let config_dir =
-            std::path::Path::new(&std::env::var("CARGO_MANIFEST_DIR")?).join("../../configuration");
+        let config_dir = std::path::PathBuf::from(std::env::var("APP_CONFIG_PATH")?);
         let env_filename = Environment::from(&*std::env::var("APP_ENVIRONMENT")?).as_filename();
 
         let config = config::Config::builder()
@@ -45,38 +38,28 @@ impl Config {
         Ok(config)
     }
 
-    /// Returns the full database connection URL as a string.
+    /// Returns the database connection options.
     ///
-    pub fn get_database_url(&self) -> String {
-        self.database.get_url()
+    pub fn get_database_connect_options(&self) -> PgConnectOptions {
+        self.database.get_connect_options()
     }
 
     /// Returns the socket address for the application server to bind to.
     ///
-    pub fn get_address(&self) -> Result<SocketAddr> {
-        self.application.get_address()
+    pub fn get_address(&self) -> SocketAddr {
+        self.application
     }
 }
 
-// -----------------------------------------------------------------------------
-
-/// Configuration, specific to the application server.
-///
-#[derive(Debug, Deserialize)]
-pub struct Application {
-    host: String,
-    port: u16,
-}
-
-impl Application {
-    /// Constructs a `SocketAddr` from the configured host and port.
-    ///
-    pub fn get_address(&self) -> Result<SocketAddr> {
-        let (host, port) = (self.host.as_str(), self.port);
-        (host, port)
-            .to_socket_addrs()?
-            .next()
-            .ok_or(Error::NotFound(format!("IP Address for {}:{}", host, port)))
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            application: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+            database: Database::default(),
+            token: TokenEnv::default(),
+            proxmox: ProxmoxEnv::default(),
+            cors: Cors::default(),
+        }
     }
 }
 
@@ -84,7 +67,7 @@ impl Application {
 
 /// All settings required to connect to the database.
 ///
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct Database {
     host: String,
     port: u16,
@@ -94,17 +77,15 @@ pub struct Database {
 }
 
 impl Database {
-    /// Constructs the full database connection URL as a string.
+    /// Constructs a `PgConnectOptions` instance for connecting to the database.
     ///
-    pub fn get_url(&self) -> String {
-        format!(
-            "postgres://{}:{}@{}:{}/{}",
-            self.username,
-            self.password.expose_secret(),
-            self.host,
-            self.port,
-            self.database_name
-        )
+    pub fn get_connect_options(&self) -> PgConnectOptions {
+        PgConnectOptions::new()
+            .host(&self.host)
+            .port(self.port)
+            .username(&self.username)
+            .password(self.password.expose_secret())
+            .database(&self.database_name)
     }
 }
 
@@ -112,7 +93,7 @@ impl Database {
 
 /// All settings required to work with JWT.
 ///
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct TokenEnv {
     pub secret: SecretString,
     pub duration_sec: u64,
@@ -120,7 +101,7 @@ pub struct TokenEnv {
 
 /// All settings required to work with Proxmox.
 ///
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct ProxmoxEnv {
     pub url: String,
     pub auth_header: SecretString,
@@ -165,7 +146,7 @@ impl From<&str> for Environment {
 
 /// Configuration for Cross-Origin Resource Sharing (CORS).
 ///
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct Cors {
     origin: String,
     methods: String,

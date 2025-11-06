@@ -50,7 +50,7 @@ pub mod password {
 }
 
 pub mod token {
-    use crate::config::CONFIG;
+    use crate::config::TokenEnv;
     use crate::web::auth::Claims;
     use chrono::{Duration, Utc};
     use dashboard_common::prelude::{AuthError, Error, Result};
@@ -63,14 +63,15 @@ pub mod token {
     /// # Arguments
     ///
     /// * `user_id`: ID of the user to create the token for.
+    /// * `token_settings`: All settings required to work with JWT.
     ///
     /// # Returns
     ///
     /// Signed JWT as a string.
     ///
-    pub fn create(user_id: Uuid) -> Result<String> {
+    pub fn create(user_id: Uuid, token_settings: TokenEnv) -> Result<String> {
         let now = Utc::now();
-        let expires_in = Duration::seconds(CONFIG.token.duration_sec as i64);
+        let expires_in = Duration::seconds(token_settings.duration_sec as i64);
         let exp = (now + expires_in).timestamp() as usize;
         let iat = now.timestamp() as usize;
         let claims = Claims { exp, iat, user_id };
@@ -79,7 +80,7 @@ pub mod token {
         let token = encode(
             &header,
             &claims,
-            &EncodingKey::from_secret(CONFIG.token.secret.expose_secret().as_bytes()),
+            &EncodingKey::from_secret(token_settings.secret.expose_secret().as_bytes()),
         )
         .map_err(|_| Error::Auth(AuthError::Token))?;
 
@@ -91,13 +92,15 @@ pub mod token {
     /// # Arguments
     ///
     /// * `token`: JWT string to validate.
+    /// * `token_settings`: All settings required to work with JWT.
     ///
     /// # Returns
     ///
     /// `Claims` contained within the token.
     ///
-    pub fn validate(token: &str) -> Result<Claims> {
-        let decoding_key = DecodingKey::from_secret(CONFIG.token.secret.expose_secret().as_bytes());
+    pub fn validate(token: &str, token_settings: TokenEnv) -> Result<Claims> {
+        let decoding_key =
+            DecodingKey::from_secret(token_settings.secret.expose_secret().as_bytes());
         let validation = Validation::default();
 
         decode::<Claims>(token, &decoding_key, &validation)

@@ -63,7 +63,10 @@ impl IntoResponse for Error {
                 StatusCode::UNAUTHORIZED,
                 "Incorrect email or password!".to_owned(),
             ),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error!".to_owned(),
+            ),
         }
         .into_response()
     }

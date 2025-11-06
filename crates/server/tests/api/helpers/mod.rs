@@ -7,6 +7,7 @@ pub mod requests;
 use async_trait::async_trait;
 use dashboard_common::prelude::Result;
 use dashboard_server::app::App;
+use dashboard_server::config::Config;
 use dashboard_server::model::queries;
 use dashboard_server::model::types::ApiServer;
 use dashboard_server::proxmox::Proxmox;
@@ -35,8 +36,13 @@ impl TestApp {
     ///
     pub async fn new(pool: PgPool) -> Self {
         // Create testable application instance.
+        let config = Config::default();
         let proxmox = Arc::new(MockProxmoxClient::default());
-        let state = AppState { pool, proxmox };
+        let state = AppState {
+            config,
+            pool,
+            proxmox,
+        };
         let application = App::build(state, "127.0.0.1:0".parse().unwrap())
             .await
             .unwrap();

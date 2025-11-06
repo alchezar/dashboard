@@ -11,6 +11,9 @@ use axum::{Json, Router};
 use dashboard_common::prelude::{AuthError, Error, Result};
 use secrecy::ExposeSecret;
 
+/// Defines routes for the catalog section. All routes are public and don't
+/// require authentication.
+///
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/register", post(register))
@@ -51,7 +54,7 @@ async fn register(
     Json(new_user): Json<NewUser>,
 ) -> Result<Json<TokenResponse>> {
     let user = queries::add_new_user(&app_state.pool, new_user).await?;
-    let token = token::create(user.id)?;
+    let token = token::create(user.id, app_state.config.token)?;
     tracing::info!(target: "handler", user_id = %user.id, "Token generated successfully");
 
     Ok(Json(TokenResponse::new(token.into())))
@@ -113,7 +116,7 @@ async fn login(
         password::verify(hash, pass)?;
     }
 
-    let token = token::create(user.id)?;
+    let token = token::create(user.id, app_state.config.token)?;
     tracing::info!(target: "handler", user_id = %user.id, "Token generated successfully");
 
     Ok(Json(TokenResponse::new(token.into())))

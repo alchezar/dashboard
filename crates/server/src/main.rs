@@ -1,7 +1,7 @@
 use dashboard_common::prelude::Result;
 use dashboard_common::telemetry;
 use dashboard_server::app::App;
-use dashboard_server::config::CONFIG;
+use dashboard_server::config::Config;
 use dashboard_server::model::queries;
 use dashboard_server::proxmox::client::ProxmoxClient;
 use dashboard_server::state::AppState;
@@ -18,14 +18,16 @@ async fn main() -> Result<()> {
     tracing::info!(target: "server", "Start!");
     tracing::info!(target: "server", "Logger ready.");
 
+    let config = Config::from_env()?;
+    let address = config.get_address();
     let app_state = AppState {
-        pool: queries::connect_to_db().await?,
+        pool: queries::connect_to_db(&config).await?,
         proxmox: Arc::new(ProxmoxClient::new(
-            CONFIG.proxmox.url.clone(),
-            CONFIG.proxmox.auth_header.clone(),
+            config.proxmox.url.clone(),
+            config.proxmox.auth_header.clone(),
         )?),
+        config,
     };
-    let address = CONFIG.get_address()?;
     let app = App::build(app_state, address).await?;
     tracing::info!(target: "server", "Listening on '{}'\n", app.get_url()?);
 

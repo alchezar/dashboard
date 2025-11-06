@@ -15,13 +15,20 @@ use axum::{Router, middleware};
 use dashboard_common::prelude::Result;
 use uuid::Uuid;
 
-pub fn routes() -> Router<AppState> {
+/// Defines routes for the server section. All routes are protected and require
+/// authentication.
+///
+/// # Arguments
+///
+/// * `State(app_state)` - The shared application state.
+///
+pub fn routes(app_state: AppState) -> Router<AppState> {
     Router::new()
         .route("/user/me", get(get_user))
         .route("/servers", get(list_servers).post(create_server))
         .route("/servers/{id}", get(get_server).delete(delete_server))
         .route("/servers/{id}/actions", post(server_action))
-        .route_layer(middleware::from_fn(mw::require_auth))
+        .route_layer(middleware::from_fn_with_state(app_state, mw::require_auth))
 }
 
 /// Returns the profile of the currently authenticated user.

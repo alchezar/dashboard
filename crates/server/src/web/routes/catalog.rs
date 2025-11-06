@@ -8,14 +8,21 @@ use axum::routing::get;
 use axum::{Json, Router, middleware};
 use dashboard_common::prelude::Result;
 
-pub fn routes() -> Router<AppState> {
+/// Defines routes for the catalog section. All routes are protected and require
+/// authentication.
+///
+/// # Arguments
+///
+/// * `State(app_state)` - The shared application state.
+///
+pub fn routes(app_state: AppState) -> Router<AppState> {
     Router::new()
         .route("/api/products", get(list_products))
         .route("/api/config/cpu", get(list_cpu_options))
         .route("/api/config/ram", get(list_ram_options))
         .route("/api/custom/os", get(list_os_options))
         .route("/api/custom/datacenter", get(list_datacenter_options))
-        .route_layer(middleware::from_fn(mw::require_auth))
+        .route_layer(middleware::from_fn_with_state(app_state, mw::require_auth))
 }
 
 /// Retrieves the product catalog.

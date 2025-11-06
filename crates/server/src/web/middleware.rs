@@ -1,6 +1,8 @@
-use crate::config::CONFIG;
+use crate::config::Cors;
+use crate::state::AppState;
 use crate::web::auth::token;
 use axum::body::Body;
+use axum::extract::State;
 use axum::http::Request;
 use axum::http::header::AUTHORIZATION;
 use axum::middleware::Next;
@@ -25,6 +27,7 @@ pub async fn log_mapper(res: Response) -> Response {
 ///
 /// # Arguments
 ///
+/// * `State(app_state)` - The shared application state.
 /// * `request`: Body of the incoming request.
 /// * `next`: `Next` middleware in the chain.
 ///
@@ -32,7 +35,11 @@ pub async fn log_mapper(res: Response) -> Response {
 ///
 /// Response from the next middleware if authentication is successful.
 ///
-pub async fn require_auth(mut request: Request<Body>, next: Next) -> Result<Response> {
+pub async fn require_auth(
+    State(app_state): State<AppState>,
+    mut request: Request<Body>,
+    next: Next,
+) -> Result<Response> {
     let token = request
         .headers()
         .get(AUTHORIZATION)
@@ -40,7 +47,7 @@ pub async fn require_auth(mut request: Request<Body>, next: Next) -> Result<Resp
         .and_then(|slice| slice.strip_prefix("Bearer "))
         .ok_or(Error::Auth(AuthError::Token))?;
 
-    let claims = token::validate(token)?;
+    let claims = token::validate(token, app_state.config.token)?;
     request.extensions_mut().insert(claims);
 
     Ok(next.run(request).await)
@@ -49,8 +56,7 @@ pub async fn require_auth(mut request: Request<Body>, next: Next) -> Result<Resp
 /// Configures CORS to allow requests from the local frontend during
 /// development.
 ///
-pub fn allow_cors() -> CorsLayer {
-    let cors = &CONFIG.cors;
+pub fn allow_cors(cors: &Cors) -> CorsLayer {
     CorsLayer::new()
         .allow_origin(cors.allow_origin())
         .allow_methods(cors.allow_methods())

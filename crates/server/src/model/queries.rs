@@ -1,4 +1,4 @@
-use crate::config::CONFIG;
+use crate::config::Config;
 use crate::model::types::*;
 use crate::proxmox::types::VmRef;
 use crate::web::auth::password::hash;
@@ -11,14 +11,18 @@ use uuid::Uuid;
 
 /// Creates and returns a connection pool to the database.
 ///
+/// # Arguments
+///
+/// * `config` - Application's configuration.
+///
 /// # Returns
 ///
 /// A `PgPool` connection pool instance.
 ///
 #[tracing::instrument(level = "trace", target = "database")]
-pub async fn connect_to_db() -> Result<PgPool> {
-    let database_url = &CONFIG.get_database_url();
-    let pool = PgPoolOptions::new().connect(database_url).await?;
+pub async fn connect_to_db(config: &Config) -> Result<PgPool> {
+    let connect_options = config.get_database_connect_options();
+    let pool = PgPoolOptions::new().connect_with(connect_options).await?;
 
     Ok(pool)
 }

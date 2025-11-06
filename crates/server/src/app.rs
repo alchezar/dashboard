@@ -35,12 +35,12 @@ impl App {
         let listener = TcpListener::bind(&address).await?;
         let router = Router::new()
             .merge(login::routes())
-            .merge(server::routes())
-            .merge(catalog::routes())
+            .merge(server::routes(app_state.clone()))
+            .merge(catalog::routes(app_state.clone()))
             .merge(SwaggerUi::new("/openapi").url("/api-docs/openapi.json", ApiDoc::openapi()))
-            .with_state(app_state)
+            .with_state(app_state.clone())
             .layer(middleware::map_response(mw::log_mapper))
-            .layer(mw::allow_cors());
+            .layer(mw::allow_cors(&app_state.config.cors));
 
         Ok(Self {
             server: axum::serve(listener, router),
