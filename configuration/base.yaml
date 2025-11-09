@@ -1,0 +1,11 @@
+﻿application: 127.0.0.1:8080
+database:
+  host: localhost
+  port: 5432
+  username: postgres
+  password: postgres
+  database_name: postgres
+cors:
+  origin: http://localhost:5173
+  methods: OPTIONS,POST,GET
+  headers: content-type, authorization

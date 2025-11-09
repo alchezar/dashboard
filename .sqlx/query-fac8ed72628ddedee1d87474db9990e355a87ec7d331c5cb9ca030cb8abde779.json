@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT whmcs_id, id FROM users",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "whmcs_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "fac8ed72628ddedee1d87474db9990e355a87ec7d331c5cb9ca030cb8abde779"
+}

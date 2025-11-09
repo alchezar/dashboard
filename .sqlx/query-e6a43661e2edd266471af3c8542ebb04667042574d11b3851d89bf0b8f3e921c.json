@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT whmcs_id, name FROM product_groups",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "whmcs_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "e6a43661e2edd266471af3c8542ebb04667042574d11b3851d89bf0b8f3e921c"
+}

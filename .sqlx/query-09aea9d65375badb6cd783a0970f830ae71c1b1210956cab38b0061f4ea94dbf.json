@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nUPDATE ip_addresses SET server_id = NULL\nWHERE server_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "09aea9d65375badb6cd783a0970f830ae71c1b1210956cab38b0061f4ea94dbf"
+}

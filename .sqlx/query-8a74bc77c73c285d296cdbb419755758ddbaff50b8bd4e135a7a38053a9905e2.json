@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT id, name FROM config_options\nWHERE name IN ('cpu_cores', 'ram_gb')\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "8a74bc77c73c285d296cdbb419755758ddbaff50b8bd4e135a7a38053a9905e2"
+}

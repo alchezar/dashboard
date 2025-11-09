@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT value FROM custom_values\nWHERE service_id = $1 AND custom_field_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "value",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "bc3ee5be256e243c58b8ef7f68662ce0e7f0ef0abab81f9737dc259b3b5b8323"
+}

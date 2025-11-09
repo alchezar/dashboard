@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nINSERT INTO networks (datacenter_name, gateway, subnet_mask)\nVALUES ('Amsterdam', '192.168.0.1', '255.255.255.255')\nRETURNING id\n\t\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b657c0a646a28b44dd281cb9396a0c894b78189a000fb128123b8380d91c30e7"
+}

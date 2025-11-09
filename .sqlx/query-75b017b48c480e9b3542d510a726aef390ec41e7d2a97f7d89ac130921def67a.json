@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT\n\tsrv.vm_id,\n\tsrv.node_name\nFROM servers AS srv\nJOIN services AS svc ON svc.server_id = srv.id\nWHERE svc.user_id = $1 AND srv.id = $2\n\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "vm_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "node_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "75b017b48c480e9b3542d510a726aef390ec41e7d2a97f7d89ac130921def67a"
+}

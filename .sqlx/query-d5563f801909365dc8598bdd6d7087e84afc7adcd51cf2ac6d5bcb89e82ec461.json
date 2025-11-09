@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT whmcs_id, datacenter_name, gateway, subnet_mask FROM networks ORDER BY whmcs_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "whmcs_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "datacenter_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "gateway",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "subnet_mask",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d5563f801909365dc8598bdd6d7087e84afc7adcd51cf2ac6d5bcb89e82ec461"
+}

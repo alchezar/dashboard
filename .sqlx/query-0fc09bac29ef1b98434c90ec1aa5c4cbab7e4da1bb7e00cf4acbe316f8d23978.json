@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT id, name FROM custom_fields\nWHERE name IN ('os', 'datacenter')\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "0fc09bac29ef1b98434c90ec1aa5c4cbab7e4da1bb7e00cf4acbe316f8d23978"
+}

@@ -1,0 +1,42 @@
+﻿[package]
+name = "migration_utility"
+version = "0.2.0"
+edition = "2024"
+
+[dependencies]
+dashboard_common = { path = "../common" }
+
+clap = { version = "4.5", features = ["derive", "env"] }
+dotenv = "0.15"
+futures = "0.3"
+secrecy = { version = "0.10.3", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.48", features = ["full"] }
+tracing = "0.1"
+uuid = { version = "1.18", features = ["v4", "serde"] }
+
+[dependencies.sqlx]
+version = "0.8"
+default-features = false
+features = [
+	"json",
+	"macros",
+	"migrate",
+	"postgres",
+	"mysql",
+	"runtime-tokio-rustls",
+	"chrono",
+	"uuid",
+]
+
+[dev-dependencies]
+criterion = { version = "0.7", features = ["async", "async_tokio"] }
+dhat = "0.3"
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+[[bench]]
+name = "memory"
+harness = false

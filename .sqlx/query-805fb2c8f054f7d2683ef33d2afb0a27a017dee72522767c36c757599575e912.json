@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT service_id, config_id, value FROM config_values",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "service_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "config_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "value",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "805fb2c8f054f7d2683ef33d2afb0a27a017dee72522767c36c757599575e912"
+}

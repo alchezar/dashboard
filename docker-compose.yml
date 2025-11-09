@@ -1,0 +1,21 @@
+﻿services:
+  # PostgreSQL DB service.
+  postgres_db:
+    image: postgres:13
+    container_name: dashboard_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DASHBOARD_DB_NAME}
+      POSTGRES_USER: ${DASHBOARD_DB_USER}
+      POSTGRES_PASSWORD: ${DASHBOARD_DB_PASS}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_db_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_db_data:
+
+networks:
+  app_network:
+    driver: bridge

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nINSERT INTO products (group_id, name)\nVALUES ($1, 'p1')\nRETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "48183ba274aa14883fe17393a460cd7c90d22f8aa456d3430d8eb0e9c8564bee"
+}

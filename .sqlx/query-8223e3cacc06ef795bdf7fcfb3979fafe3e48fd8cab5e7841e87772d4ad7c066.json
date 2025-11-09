@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nINSERT INTO ip_addresses (ip_address, network_id, server_id)\nVALUES ('10.0.0.101', $1, $2)\nRETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8223e3cacc06ef795bdf7fcfb3979fafe3e48fd8cab5e7841e87772d4ad7c066"
+}

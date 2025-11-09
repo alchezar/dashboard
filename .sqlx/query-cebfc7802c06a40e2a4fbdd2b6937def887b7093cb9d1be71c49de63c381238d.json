@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT os_name, template_vmid, template_node, virtual_type FROM templates ORDER BY template_vmid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "os_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "template_vmid",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "template_node",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "virtual_type",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "cebfc7802c06a40e2a4fbdd2b6937def887b7093cb9d1be71c49de63c381238d"
+}

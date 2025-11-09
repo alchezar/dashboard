@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT\n\tip.id AS \"ip_id\",\n\tip.ip_address,\n\tn.gateway,\n\tn.subnet_mask\nFROM ip_addresses AS ip\nJOIN networks AS n ON ip.network_id = n.id\nWHERE ip.server_id IS NULL AND n.datacenter_name = $1\nLIMIT 1\nFOR UPDATE SKIP LOCKED\n\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ip_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "ip_address",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "gateway",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "subnet_mask",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c35ae181ef04365749bb37157991a0811efd25ac05ab090bcdc6a6d05b08e2f1"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\nSELECT\n\tt.template_node,\n\tt.template_vmid\nFROM services AS s\nJOIN templates AS t ON t.id = s.template_id\nWHERE s.id = $1\n\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "template_node",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "template_vmid",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "6131d63ac7c385f39c4b9a6cc8a013a984795eea9c2c8f3d78d7b19d2686ac63"
+}

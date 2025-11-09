@@ -1,0 +1,5 @@
+﻿database:
+  port: 5434
+  username: admin
+  password: password
+  database_name: dashboard_db
